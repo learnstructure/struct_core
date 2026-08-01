@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "struct_core"
+version = "0.1.0"
+description = "A common engineering schema for 2D/3D structural analysis and structural dynamics."
+authors = [{name = "Abinash Mandal", email = "abinashmandal33486@gmail.com"}]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["struct_core*"]
