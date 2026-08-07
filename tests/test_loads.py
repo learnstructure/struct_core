@@ -2,7 +2,7 @@
 Unit tests for load schemas.
 """
 
-from struct_core.loads import (
+from struct_core.structural_model.loads import (
     DistributedLoad,
     GroundMotion,
     LoadCase,

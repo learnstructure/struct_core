@@ -4,7 +4,7 @@ Cross-section schemas for geometric and explicit general sections.
 
 from typing import Annotated, Literal, Optional, Union
 from pydantic import Field
-from .base import BaseSchemaModel, SectionId
+from ..base import BaseSchemaModel, SectionId
 
 
 class BaseSection(BaseSchemaModel):

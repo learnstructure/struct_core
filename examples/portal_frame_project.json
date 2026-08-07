@@ -1,0 +1,201 @@
+{
+  "metadata": {
+    "schema_version": "1.0.0",
+    "title": "2D Portal Frame Example",
+    "project_name": "Industrial Warehouse",
+    "author": "Structural Engineer AI",
+    "description": null,
+    "created_at": "2026-08-07T08:05:09.826389+00:00",
+    "units": {
+      "length": "m",
+      "force": "kN",
+      "time": "s",
+      "mass": "kg",
+      "temperature": "C"
+    }
+  },
+  "model": {
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "mass": 0.0,
+        "inertia": 0.0
+      },
+      {
+        "id": 2,
+        "x": 0.0,
+        "y": 4.0,
+        "z": 0.0,
+        "mass": 0.0,
+        "inertia": 0.0
+      },
+      {
+        "id": 3,
+        "x": 6.0,
+        "y": 4.0,
+        "z": 0.0,
+        "mass": 0.0,
+        "inertia": 0.0
+      },
+      {
+        "id": 4,
+        "x": 6.0,
+        "y": 0.0,
+        "z": 0.0,
+        "mass": 0.0,
+        "inertia": 0.0
+      }
+    ],
+    "elements": [
+      {
+        "id": 1,
+        "start_node": 1,
+        "end_node": 2,
+        "name": null,
+        "type": "beam",
+        "material_id": "StructuralSteel",
+        "section_id": "ColSec",
+        "release_i": [
+          false,
+          false,
+          false
+        ],
+        "release_j": [
+          false,
+          false,
+          false
+        ],
+        "is_nonlinear": false
+      },
+      {
+        "id": 2,
+        "start_node": 2,
+        "end_node": 3,
+        "name": null,
+        "type": "beam",
+        "material_id": "StructuralSteel",
+        "section_id": "BeamSec",
+        "release_i": [
+          false,
+          false,
+          false
+        ],
+        "release_j": [
+          false,
+          false,
+          false
+        ],
+        "is_nonlinear": false
+      },
+      {
+        "id": 3,
+        "start_node": 3,
+        "end_node": 4,
+        "name": null,
+        "type": "beam",
+        "material_id": "StructuralSteel",
+        "section_id": "ColSec",
+        "release_i": [
+          false,
+          false,
+          false
+        ],
+        "release_j": [
+          false,
+          false,
+          false
+        ],
+        "is_nonlinear": false
+      }
+    ],
+    "materials": [
+      {
+        "id": "StructuralSteel",
+        "name": null,
+        "type": "elastic",
+        "E": 200000000000.0,
+        "nu": 0.3,
+        "rho": 7850.0
+      }
+    ],
+    "sections": [
+      {
+        "id": "ColSec",
+        "name": null,
+        "type": "rectangular",
+        "b": 0.3,
+        "h": 0.3
+      },
+      {
+        "id": "BeamSec",
+        "name": null,
+        "type": "rectangular",
+        "b": 0.25,
+        "h": 0.45
+      }
+    ],
+    "supports": [
+      {
+        "node_id": 1,
+        "ux": true,
+        "uy": true,
+        "rz": true,
+        "kx": 0.0,
+        "ky": 0.0,
+        "krz": 0.0,
+        "name": "Left Support"
+      },
+      {
+        "node_id": 4,
+        "ux": true,
+        "uy": true,
+        "rz": true,
+        "kx": 0.0,
+        "ky": 0.0,
+        "krz": 0.0,
+        "name": "Right Support"
+      }
+    ],
+    "load_cases": [
+      {
+        "id": "GravityAndWind",
+        "name": "Dead Load + Lateral Wind",
+        "point_loads": [
+          {
+            "node_id": 2,
+            "fx": 20000.0,
+            "fy": 0.0,
+            "mz": 0.0
+          }
+        ],
+        "element_loads": [
+          {
+            "element_id": 2,
+            "wx": 0.0,
+            "wy": -15000.0,
+            "w1": null,
+            "w2": null,
+            "is_local": false
+          }
+        ]
+      }
+    ],
+    "load_combinations": [],
+    "ground_motions": [],
+    "analysis_cases": [
+      {
+        "id": "LinearSolve",
+        "name": null,
+        "type": "linear_static",
+        "load_case_id": "GravityAndWind",
+        "load_combination_id": null
+      }
+    ]
+  },
+  "analysis_results": {},
+  "design_results": {},
+  "detailing_results": {}
+}

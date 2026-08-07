@@ -4,7 +4,7 @@ Element schemas representing structural members (Truss, Beam, Spring).
 
 from typing import Annotated, Literal, Optional, Union
 from pydantic import Field
-from .base import BaseSchemaModel, ElementId, MaterialId, NodeId, SectionId
+from ..base import BaseSchemaModel, ElementId, MaterialId, NodeId, SectionId
 
 
 class BaseElement(BaseSchemaModel):

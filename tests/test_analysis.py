@@ -3,7 +3,7 @@ Unit tests for analysis case schemas.
 """
 
 from pydantic import TypeAdapter
-from struct_core.analysis import (
+from struct_core.structural_model.analysis import (
     AnalysisCase,
     LinearStaticAnalysis,
     ModalAnalysis,

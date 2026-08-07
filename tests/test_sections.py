@@ -4,7 +4,7 @@ Unit tests for cross-section schemas.
 
 import pytest
 from pydantic import TypeAdapter, ValidationError
-from struct_core.sections import (
+from struct_core.structural_model.sections import (
     CircularSection,
     GeneralSection,
     RectangularSection,

@@ -4,7 +4,7 @@ Boundary conditions and support schemas.
 
 from typing import Optional
 from pydantic import Field
-from .base import BaseSchemaModel, NodeId
+from ..base import BaseSchemaModel, NodeId
 
 
 class Support(BaseSchemaModel):

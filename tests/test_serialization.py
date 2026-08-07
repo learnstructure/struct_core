@@ -4,13 +4,15 @@ Unit tests for serialization functions.
 
 import tempfile
 from pathlib import Path
-from struct_core.elements import BeamElement
-from struct_core.materials import ElasticMaterial
-from struct_core.model import StructuralModel
-from struct_core.nodes import Node
 from struct_core.project import Project
-from struct_core.sections import RectangularSection
 from struct_core.serialization import from_dict, from_json, load_json, save_json, to_dict, to_json
+from struct_core.structural_model import (
+    BeamElement,
+    ElasticMaterial,
+    Node,
+    RectangularSection,
+    StructuralModel,
+)
 
 
 def test_dict_serialization():

@@ -3,7 +3,7 @@ Node schema representing grid points in a 2D or 3D structural model.
 """
 
 from pydantic import Field
-from .base import BaseSchemaModel, NodeId
+from ..base import BaseSchemaModel, NodeId
 
 
 class Node(BaseSchemaModel):

@@ -1,23 +1,24 @@
 """
-struct_core: A common engineering schema for 2D/3D structural analysis and structural dynamics.
+struct_core: A common engineering schema for 2D/3D structural analysis, structural dynamics,
+code design, and reinforcement detailing.
 """
 
-from .analysis import (
-    AnalysisCase,
-    AnalysisCaseId,
-    AnalysisCaseSchema,
-    BaseAnalysisCase,
-    BaseAnalysisCaseSchema,
-    LinearStaticAnalysis,
-    LinearStaticAnalysisSchema,
-    ModalAnalysis,
-    ModalAnalysisSchema,
-    NonlinearStaticAnalysis,
-    NonlinearStaticAnalysisSchema,
-    TimeHistoryAnalysis,
-    TimeHistoryAnalysisSchema,
+from . import analysis_result, design_result, detailing_result, structural_model
+from .analysis_result import (
+    AnalysisResult,
+    BeamSectionForce,
+    ElementForceResult,
+    ElementResult,
+    ModalResult,
+    ModeShape,
+    NodeDisplacement,
+    NodeReaction,
+    NodeResult,
+    TimeHistoryResult,
+    TimeStepResult,
 )
 from .base import (
+    AnalysisCaseId,
     BaseSchemaModel,
     ElementId,
     IDType,
@@ -26,72 +27,115 @@ from .base import (
     NodeId,
     SectionId,
 )
-from .elements import (
+from .design_result import (
+    CodeCheckResult,
+    DesignResult,
+    ElementDesignResult,
+    FlexureDesignResult,
+    MaterialDesignResult,
+    ShearDesignResult,
+)
+from .detailing_result import (
+    Anchorage,
+    Bar,
+    BarLayout,
+    BarSchedule,
+    BarScheduleItem,
+    DetailingResult,
+    ElementDetailingResult,
+    HookGeometry,
+    LapSplice,
+    RebarLayer,
+    StirrupLayout,
+)
+from .metadata import Metadata, ModelMetadata, Units, UnitsSchema
+from .project import Project
+from .serialization import from_dict, from_json, load_json, save_json, to_dict, to_json
+from .structural_model import (
+    AnalysisCase,
+    AnalysisCaseSchema,
+    BaseAnalysisCase,
+    BaseAnalysisCaseSchema,
     BaseElement,
     BaseElementSchema,
+    BaseMaterial,
+    BaseMaterialSchema,
+    BaseSection,
+    BaseSectionSchema,
     BeamElement,
     BeamElementSchema,
-    Element,
-    ElementSchema,
-    SpringElement,
-    SpringElementSchema,
-    TrussElement,
-    TrussElementSchema,
-)
-from .loads import (
+    BilinearMaterial,
+    BilinearMaterialSchema,
+    CircularSection,
+    CircularSectionSchema,
     DistributedLoad,
     DistributedLoadSchema,
+    ElasticMaterial,
+    ElasticMaterialSchema,
+    Element,
+    ElementSchema,
+    GeneralSection,
+    GeneralSectionSchema,
     GroundMotion,
     GroundMotionSchema,
+    LinearStaticAnalysis,
+    LinearStaticAnalysisSchema,
     LoadCase,
     LoadCaseFactor,
     LoadCaseFactorSchema,
     LoadCaseSchema,
     LoadCombination,
     LoadCombinationSchema,
-    PointLoad,
-    PointLoadSchema,
-)
-from .materials import (
-    BaseMaterial,
-    BaseMaterialSchema,
-    BilinearMaterial,
-    BilinearMaterialSchema,
-    ElasticMaterial,
-    ElasticMaterialSchema,
     Material,
     MaterialSchema,
-)
-from .metadata import Metadata, ModelMetadata, Units, UnitsSchema
-from .model import StructuralModel
-from .nodes import Node, NodeSchema
-from .project import Project
-from .registry import ElementRegistry
-from .sections import (
-    BaseSection,
-    BaseSectionSchema,
-    CircularSection,
-    CircularSectionSchema,
-    GeneralSection,
-    GeneralSectionSchema,
+    ModalAnalysis,
+    ModalAnalysisSchema,
+    Node,
+    NodeSchema,
+    NonlinearStaticAnalysis,
+    NonlinearStaticAnalysisSchema,
+    PointLoad,
+    PointLoadSchema,
     RectangularSection,
     RectangularSectionSchema,
     Section,
     SectionSchema,
+    SpringElement,
+    SpringElementSchema,
+    StructuralModel,
+    StructuralValidationError,
+    Support,
+    SupportSchema,
+    TimeHistoryAnalysis,
+    TimeHistoryAnalysisSchema,
+    TrussElement,
+    TrussElementSchema,
+    validate_structural_model,
 )
-from .serialization import from_dict, from_json, load_json, save_json, to_dict, to_json
-from .supports import Support, SupportSchema
-from .validation import StructuralValidationError, validate_structural_model
+from .structural_model.registry import ElementRegistry
 
-__version__ = "0.1.0"
+# Plural aliases matching ecosystem naming conventions
+analysis_results = analysis_result
+design_results = design_result
+detailing_results = detailing_result
+
+__version__ = "0.2.0"
 
 __all__ = [
+    # Subpackages
+    "structural_model",
+    "analysis_result",
+    "design_result",
+    "detailing_result",
+    "analysis_results",
+    "design_results",
+    "detailing_results",
     # Metadata & Units
     "Metadata",
     "Units",
     "ModelMetadata",
     "UnitsSchema",
-    # Base
+    # Base / IDs
     "BaseSchemaModel",
     "IDType",
     "NodeId",
@@ -100,7 +144,7 @@ __all__ = [
     "SectionId",
     "LoadCaseId",
     "AnalysisCaseId",
-    # Nodes & Elements
+    # Structural Model Entities
     "Node",
     "NodeSchema",
     "BaseElement",
@@ -114,7 +158,6 @@ __all__ = [
     "Element",
     "ElementSchema",
     "ElementRegistry",
-    # Materials & Sections
     "BaseMaterial",
     "BaseMaterialSchema",
     "ElasticMaterial",
@@ -133,10 +176,8 @@ __all__ = [
     "GeneralSectionSchema",
     "Section",
     "SectionSchema",
-    # Supports & Boundary Conditions
     "Support",
     "SupportSchema",
-    # Loads
     "PointLoad",
     "PointLoadSchema",
     "DistributedLoad",
@@ -149,7 +190,6 @@ __all__ = [
     "LoadCaseFactorSchema",
     "LoadCombination",
     "LoadCombinationSchema",
-    # Analysis Cases
     "BaseAnalysisCase",
     "BaseAnalysisCaseSchema",
     "LinearStaticAnalysis",
@@ -162,13 +202,42 @@ __all__ = [
     "TimeHistoryAnalysisSchema",
     "AnalysisCase",
     "AnalysisCaseSchema",
-    # Models & Project Containers
     "StructuralModel",
-    "Project",
-    # Validation
     "validate_structural_model",
     "StructuralValidationError",
-    # Serialization
+    # Analysis Results
+    "NodeDisplacement",
+    "NodeReaction",
+    "NodeResult",
+    "BeamSectionForce",
+    "ElementForceResult",
+    "ElementResult",
+    "ModeShape",
+    "ModalResult",
+    "TimeStepResult",
+    "TimeHistoryResult",
+    "AnalysisResult",
+    # Design Results
+    "CodeCheckResult",
+    "FlexureDesignResult",
+    "ShearDesignResult",
+    "MaterialDesignResult",
+    "ElementDesignResult",
+    "DesignResult",
+    # Detailing Results
+    "Bar",
+    "RebarLayer",
+    "StirrupLayout",
+    "BarLayout",
+    "HookGeometry",
+    "LapSplice",
+    "Anchorage",
+    "BarScheduleItem",
+    "BarSchedule",
+    "ElementDetailingResult",
+    "DetailingResult",
+    # Project & Utilities
+    "Project",
     "to_dict",
     "from_dict",
     "to_json",

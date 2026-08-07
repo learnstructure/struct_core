@@ -3,14 +3,19 @@ Unit tests for structural validation rules.
 """
 
 import pytest
-from struct_core.elements import BeamElement
-from struct_core.loads import DistributedLoad, LoadCase, PointLoad
-from struct_core.materials import ElasticMaterial
-from struct_core.model import StructuralModel
-from struct_core.nodes import Node
-from struct_core.sections import RectangularSection
-from struct_core.supports import Support
-from struct_core.validation import StructuralValidationError, validate_structural_model
+from struct_core.structural_model import (
+    BeamElement,
+    DistributedLoad,
+    ElasticMaterial,
+    LoadCase,
+    Node,
+    PointLoad,
+    RectangularSection,
+    StructuralModel,
+    StructuralValidationError,
+    Support,
+    validate_structural_model,
+)
 
 
 def test_valid_model():

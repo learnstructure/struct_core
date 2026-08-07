@@ -4,8 +4,8 @@ Root StructuralModel container holding nodes, elements, materials, sections, sup
 
 from typing import List
 from pydantic import Field
+from ..base import BaseSchemaModel
 from .analysis import AnalysisCase
-from .base import BaseSchemaModel
 from .elements import Element
 from .loads import GroundMotion, LoadCase, LoadCombination
 from .materials import Material

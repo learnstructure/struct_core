@@ -4,7 +4,7 @@ Unit tests for material schemas.
 
 import pytest
 from pydantic import TypeAdapter, ValidationError
-from struct_core.materials import (
+from struct_core.structural_model.materials import (
     BilinearMaterial,
     ElasticMaterial,
     Material,

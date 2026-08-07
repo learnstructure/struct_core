@@ -4,7 +4,7 @@ Material schemas for linear elastic and nonlinear materials.
 
 from typing import Annotated, Literal, Optional, Union
 from pydantic import Field
-from .base import BaseSchemaModel, MaterialId
+from ..base import BaseSchemaModel, MaterialId
 
 
 class BaseMaterial(BaseSchemaModel):

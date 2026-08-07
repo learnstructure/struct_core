@@ -4,7 +4,7 @@ Load schemas for point loads, distributed loads, ground motions, load cases, and
 
 from typing import List, Optional
 from pydantic import Field
-from .base import BaseSchemaModel, ElementId, LoadCaseId, NodeId
+from ..base import BaseSchemaModel, ElementId, LoadCaseId, NodeId
 
 
 class PointLoad(BaseSchemaModel):

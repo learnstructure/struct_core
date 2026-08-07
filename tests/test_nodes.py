@@ -4,7 +4,7 @@ Unit tests for NodeSchema.
 
 import pytest
 from pydantic import ValidationError
-from struct_core.nodes import Node
+from struct_core.structural_model.nodes import Node
 
 
 def test_node_creation_2d():

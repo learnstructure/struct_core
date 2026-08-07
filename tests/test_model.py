@@ -2,15 +2,18 @@
 Unit tests for StructuralModel and Project containers.
 """
 
-from struct_core.analysis import LinearStaticAnalysis
-from struct_core.elements import BeamElement
-from struct_core.loads import LoadCase, PointLoad
-from struct_core.materials import ElasticMaterial
-from struct_core.model import StructuralModel
-from struct_core.nodes import Node
 from struct_core.project import Project
-from struct_core.sections import RectangularSection
-from struct_core.supports import Support
+from struct_core.structural_model import (
+    BeamElement,
+    ElasticMaterial,
+    LinearStaticAnalysis,
+    LoadCase,
+    Node,
+    PointLoad,
+    RectangularSection,
+    StructuralModel,
+    Support,
+)
 
 
 def test_structural_model_building():

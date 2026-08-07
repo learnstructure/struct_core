@@ -4,7 +4,7 @@ Analysis case schemas for linear static, nonlinear static, modal, and dynamic ti
 
 from typing import Annotated, Literal, Optional, Union
 from pydantic import Field
-from .base import AnalysisCaseId, BaseSchemaModel, LoadCaseId
+from ..base import AnalysisCaseId, BaseSchemaModel, LoadCaseId
 
 
 class BaseAnalysisCase(BaseSchemaModel):

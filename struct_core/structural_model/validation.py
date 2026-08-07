@@ -3,7 +3,7 @@ Validation logic for structural model referential integrity, duplicate IDs, and 
 """
 
 import math
-from typing import List, Dict, Set
+from typing import Dict, List, Set
 from .model import StructuralModel
 
 

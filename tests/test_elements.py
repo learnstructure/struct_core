@@ -4,13 +4,13 @@ Unit tests for element schemas and registry.
 
 import pytest
 from pydantic import TypeAdapter
-from struct_core.elements import (
+from struct_core.structural_model.elements import (
     BeamElement,
     Element,
     SpringElement,
     TrussElement,
 )
-from struct_core.registry import ElementRegistry
+from struct_core.structural_model.registry import ElementRegistry
 
 
 def test_truss_element():

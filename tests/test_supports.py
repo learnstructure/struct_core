@@ -2,7 +2,7 @@
 Unit tests for support schemas.
 """
 
-from struct_core.supports import Support
+from struct_core.structural_model.supports import Support
 
 
 def test_support_custom():
