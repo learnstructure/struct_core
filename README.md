@@ -81,7 +81,7 @@ struct_core/
 │   ├── sections.py        #   RectangularSection, CircularSection, GeneralSection
 │   ├── elements.py        #   TrussElement, BeamElement, SpringElement
 │   ├── supports.py        #   Support
-│   ├── loads.py           #   PointLoad, DistributedLoad, LoadCase, LoadCombination
+│   ├── loads.py           #   PointLoad, DistributedLoad, AreaLoad, LoadCase, LoadCombination
 │   ├── analysis.py        #   LinearStaticAnalysis, ModalAnalysis, TimeHistoryAnalysis
 │   ├── model.py           #   StructuralModel
 │   ├── validation.py      #   validate_structural_model
@@ -189,9 +189,9 @@ reloaded = load_json(Project, "portal.json")
 ### Run Analysis with fem2d
 
 ```python
-from fem2d import from_schema
+from fem2d import model_from_core
 
-structure = from_schema(project)
+structure = model_from_core(project)
 structure.solve()
 ```
 

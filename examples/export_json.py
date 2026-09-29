@@ -1,6 +1,6 @@
 """
 Example demonstrating how to build a portal frame using struct_core JSON / Pydantic models,
-convert it using fem2d.from_schema(), and solve for static displacements and internal forces.
+convert it using fem2d.model_from_core(), and solve for static displacements and internal forces.
 """
 
 from struct_core import (
@@ -19,7 +19,7 @@ from struct_core import (
     save_json,
 )
 
-from fem2d import from_schema
+from fem2d import model_from_core
 
 
 def main():
@@ -81,7 +81,7 @@ def main():
     reloaded_project = from_json(Project, open(output_path, "r", encoding="utf-8").read())
 
     print("\n=== Step 2: Converting Schema to fem2d.Structure via Adapter ===")
-    structure = from_schema(reloaded_project)
+    structure = model_from_core(reloaded_project)
     print(f"Created Structure with {len(structure.nodes)} nodes and {len(structure.elements)} elements.")
 
     # print("\n=== Step 3: Solving Linear Static Analysis ===")

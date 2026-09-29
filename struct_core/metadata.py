@@ -7,17 +7,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class Units(BaseModel):
-    """
-    Schema for engineering units system.
-    """
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
-
-    length: str = Field(default="m", description="Length unit, e.g., 'm', 'mm', 'in', 'ft'")
-    force: str = Field(default="kN", description="Force unit, e.g., 'N', 'kN', 'kip', 'lbf'")
-    time: str = Field(default="s", description="Time unit, e.g., 's'")
-    mass: str = Field(default="kg", description="Mass unit, e.g., 'kg', 'tonne', 'slug'")
-    temperature: str = Field(default="C", description="Temperature unit, e.g., 'C', 'F'")
+from .units import Units, UnitsSchema
 
 
 class Metadata(BaseModel):

@@ -9,6 +9,7 @@ from .analysis_result import AnalysisResult
 from .element_result import BeamSectionForce, ElementForceResult, ElementResult
 from .modal_result import ModalResult, ModeShape
 from .node_result import NodeDisplacement, NodeReaction, NodeResult
+from .superposition import envelope_results, superpose_results
 from .time_history_result import TimeHistoryResult, TimeStepResult
 
 __all__ = [
@@ -23,4 +24,6 @@ __all__ = [
     "TimeStepResult",
     "TimeHistoryResult",
     "AnalysisResult",
+    "superpose_results",
+    "envelope_results",
 ]

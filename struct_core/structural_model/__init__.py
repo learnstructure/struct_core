@@ -42,6 +42,8 @@ from .elements import (
     TrussElementSchema,
 )
 from .loads import (
+    AreaLoad,
+    AreaLoadSchema,
     DistributedLoad,
     DistributedLoadSchema,
     GroundMotion,
@@ -132,6 +134,8 @@ __all__ = [
     "Support",
     "SupportSchema",
     # Loads
+    "AreaLoad",
+    "AreaLoadSchema",
     "PointLoad",
     "PointLoadSchema",
     "DistributedLoad",

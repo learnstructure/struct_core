@@ -16,6 +16,8 @@ from .analysis_result import (
     NodeResult,
     TimeHistoryResult,
     TimeStepResult,
+    envelope_results,
+    superpose_results,
 )
 from .base import (
     AnalysisCaseId,
@@ -49,6 +51,16 @@ from .detailing_result import (
     StirrupLayout,
 )
 from .metadata import Metadata, ModelMetadata, Units, UnitsSchema
+from .units import (
+    PRESETS,
+    DIMENSIONS,
+    UnitLabels,
+    conversion_factor,
+    convert_project_units,
+    get_unit_labels,
+    normalize_unit_str,
+    parse_units,
+)
 from .project import Project
 from .serialization import from_dict, from_json, load_json, save_json, to_dict, to_json
 from .structural_model import (
@@ -58,6 +70,8 @@ from .structural_model import (
     BaseAnalysisCaseSchema,
     BaseElement,
     BaseElementSchema,
+    AreaLoad,
+    AreaLoadSchema,
     BaseMaterial,
     BaseMaterialSchema,
     BaseSection,
@@ -135,6 +149,12 @@ __all__ = [
     "Units",
     "ModelMetadata",
     "UnitsSchema",
+    "PRESETS",
+    "parse_units",
+    "conversion_factor",
+    "convert_project_units",
+    "get_unit_labels",
+    "UnitLabels",
     # Base / IDs
     "BaseSchemaModel",
     "IDType",
@@ -178,6 +198,8 @@ __all__ = [
     "SectionSchema",
     "Support",
     "SupportSchema",
+    "AreaLoad",
+    "AreaLoadSchema",
     "PointLoad",
     "PointLoadSchema",
     "DistributedLoad",

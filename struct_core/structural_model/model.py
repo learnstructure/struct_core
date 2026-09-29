@@ -7,7 +7,7 @@ from pydantic import Field
 from ..base import BaseSchemaModel
 from .analysis import AnalysisCase
 from .elements import Element
-from .loads import GroundMotion, LoadCase, LoadCombination
+from .loads import AreaLoad, GroundMotion, LoadCase, LoadCombination
 from .materials import Material
 from .nodes import Node
 from .sections import Section
@@ -25,5 +25,7 @@ class StructuralModel(BaseSchemaModel):
     supports: List[Support] = Field(default_factory=list, description="List of support boundary conditions")
     load_cases: List[LoadCase] = Field(default_factory=list, description="List of load cases")
     load_combinations: List[LoadCombination] = Field(default_factory=list, description="List of load combinations")
+    area_loads: List[AreaLoad] = Field(default_factory=list, description="List of area/surface loads applied over floors/panels")
+    story_elevations: List[float] = Field(default_factory=list, description="List of floor/story elevations (Z or Y coordinates)")
     ground_motions: List[GroundMotion] = Field(default_factory=list, description="List of ground motion records")
     analysis_cases: List[AnalysisCase] = Field(default_factory=list, description="List of analysis cases")

@@ -58,3 +58,22 @@ def test_load_case_and_combination():
     assert len(comb.factors) == 2
     assert comb.factors[0].factor == 1.2
     assert comb.factors[1].factor == 1.6
+
+
+def test_area_load():
+    from struct_core import AreaLoad
+    aload = AreaLoad(
+        id="Floor_L2",
+        story_elevation=3.5,
+        pressure=2.4,
+        load_type="live",
+        tributary_width=5.0,
+    )
+    assert aload.pressure == 2.4
+    assert aload.tributary_width == 5.0
+    assert aload.one_way is True
+
+    lc = LoadCase(id="LL", name="Live Load", area_loads=[aload], include_self_weight=False)
+    assert len(lc.area_loads) == 1
+    assert lc.include_self_weight is False
+
