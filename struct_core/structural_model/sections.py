@@ -3,7 +3,7 @@ Cross-section schemas for geometric and explicit general sections.
 """
 
 from typing import Annotated, Literal, Optional, Union
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from ..base import BaseSchemaModel, SectionId
 
 
@@ -18,11 +18,13 @@ class BaseSection(BaseSchemaModel):
 class RectangularSection(BaseSection):
     """
     Geometric rectangular cross-section definition.
-    Stores pure geometric parameters (b, h).
+    Stores pure geometric parameters (b, h):
+    - b: section width along local 3-axis (flange/transverse dimension)
+    - h: section depth/height along local 2-axis (web dimension)
     """
     type: Literal["rectangular"] = "rectangular"
-    b: float = Field(gt=0.0, description="Section width along local y-axis")
-    h: float = Field(gt=0.0, description="Section depth/height along local z-axis")
+    b: float = Field(gt=0.0, description="Section width along local 3-axis")
+    h: float = Field(gt=0.0, description="Section depth/height along local 2-axis")
 
 
 class CircularSection(BaseSection):
@@ -36,13 +38,16 @@ class CircularSection(BaseSection):
 
 class GeneralSection(BaseSection):
     """
-    Explicit numerical section definition storing pre-computed properties.
+    Explicit numerical section definition storing pre-computed properties:
+    - I3: second moment of area about local 3-axis (major flexural axis)
+    - I2: second moment of area about local 2-axis (minor flexural axis)
+    - J: torsional constant about local 1-axis
     """
     type: Literal["general"] = "general"
     A: float = Field(gt=0.0, description="Cross-sectional area")
-    Iz: float = Field(gt=0.0, description="Second moment of area about local z-axis")
-    Iy: float = Field(default=0.0, ge=0.0, description="Second moment of area about local y-axis")
-    J: float = Field(default=0.0, ge=0.0, description="Torsional constant")
+    I3: float = Field(gt=0.0, description="Second moment of area about local 3-axis", validation_alias=AliasChoices("I3", "Iz", "i3", "iz"))
+    I2: float = Field(default=0.0, ge=0.0, description="Second moment of area about local 2-axis", validation_alias=AliasChoices("I2", "Iy", "i2", "iy"))
+    J: float = Field(default=0.0, ge=0.0, description="Torsional constant about local 1-axis", validation_alias=AliasChoices("J", "j"))
 
 
 # Discriminated union for section deserialization

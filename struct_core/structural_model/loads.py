@@ -2,8 +2,8 @@
 Load schemas for point loads, distributed loads, ground motions, load cases, and load combinations.
 """
 
-from typing import List, Optional
-from pydantic import Field
+from typing import List, Optional, Any
+from pydantic import Field, model_validator
 from ..base import BaseSchemaModel, ElementId, LoadCaseId, NodeId
 
 
@@ -23,15 +23,45 @@ class PointLoad(BaseSchemaModel):
 class DistributedLoad(BaseSchemaModel):
     """
     Distributed load applied along an element.
+    - Global coordinates (is_local=False): wx, wy, wz along global X, Y, Z
+    - Local coordinates (is_local=True): w1 (axial), w2 (transverse), w3 (out-of-plane)
     Supports uniform and linearly varying load profiles.
     """
     element_id: ElementId = Field(description="Target element ID")
-    wx: float = Field(default=0.0, description="Uniform load intensity along X-axis")
-    wy: float = Field(default=0.0, description="Uniform load intensity along Y-axis")
-    wz: float = Field(default=0.0, description="Uniform load intensity along Z-axis")
-    w1: Optional[float] = Field(default=None, description="Start load intensity at i-node (for linearly varying loads)")
-    w2: Optional[float] = Field(default=None, description="End load intensity at j-node (for linearly varying loads)")
-    is_local: bool = Field(default=False, description="Flag indicating local element coordinate system")
+    # Global load components
+    wx: float = Field(default=0.0, description="Uniform load intensity along global X-axis")
+    wy: float = Field(default=0.0, description="Uniform load intensity along global Y-axis")
+    wz: float = Field(default=0.0, description="Uniform load intensity along global Z-axis")
+    # Local load components (used when is_local=True)
+    w1: float = Field(default=0.0, description="Uniform load intensity along local 1-axis (axial)")
+    w2: float = Field(default=0.0, description="Uniform load intensity along local 2-axis (transverse)")
+    w3: float = Field(default=0.0, description="Uniform load intensity along local 3-axis (out-of-plane)")
+    # Linearly varying load profile
+    w_start: Optional[float] = Field(default=None, description="Start load intensity at i-node")
+    w_end: Optional[float] = Field(default=None, description="End load intensity at j-node")
+    is_local: bool = Field(default=False, description="Flag indicating local element coordinate system (w1, w2, w3)")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sync_local_components(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            is_loc = data.get("is_local", False)
+            if is_loc:
+                if "w1" in data and "wx" not in data:
+                    data["wx"] = data["w1"]
+                elif "wx" in data and "w1" not in data:
+                    data["w1"] = data["wx"]
+
+                if "w2" in data and "wy" not in data:
+                    data["wy"] = data["w2"]
+                elif "wy" in data and "w2" not in data:
+                    data["w2"] = data["wy"]
+
+                if "w3" in data and "wz" not in data:
+                    data["wz"] = data["w3"]
+                elif "wz" in data and "w3" not in data:
+                    data["w3"] = data["wz"]
+        return data
 
 
 class AreaLoad(BaseSchemaModel):

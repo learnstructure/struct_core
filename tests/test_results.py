@@ -34,13 +34,16 @@ def test_analysis_result_schema():
         element_results={
             101: ElementResult(
                 element_id=101,
-                forces=[BeamSectionForce(station=0.0, P=50.0, Vy=12.5, Mz=45.0)],
+                forces=[BeamSectionForce(station=0.0, P=50.0, V2=12.5, V3=5.0, M2=15.0, M3=45.0, T=2.0)],
             )
         },
     )
 
     assert res.analysis_case_id == "StaticCase1"
     assert res.node_results[1].displacement.uy == -0.005
+    assert res.element_results[101].forces[0].V2 == 12.5
+    assert res.element_results[101].forces[0].M3 == 45.0
+    assert res.element_results[101].forces[0].Vy == 12.5
     assert res.element_results[101].forces[0].Mz == 45.0
 
 

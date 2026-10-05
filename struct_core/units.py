@@ -495,12 +495,12 @@ def convert_project_units(
             elif sec_type == "general" or hasattr(sec, "A"):
                 if hasattr(sec, "A") and sec.A is not None:
                     sec.A = float(sec.A) * f_area
-                if hasattr(sec, "Iz") and sec.Iz is not None:
-                    sec.Iz = float(sec.Iz) * f_inertia
-                if hasattr(sec, "Iy") and sec.Iy is not None:
-                    sec.Iy = float(sec.Iy) * f_inertia
-                if hasattr(sec, "J") and sec.J is not None:
-                    sec.J = float(sec.J) * f_inertia
+                for attr_i in ("I3", "I2", "J"):
+                    if hasattr(sec, attr_i) and getattr(sec, attr_i) is not None:
+                        try:
+                            setattr(sec, attr_i, float(getattr(sec, attr_i)) * f_inertia)
+                        except Exception:
+                            pass
 
         # 5. Supports (kx, ky, kz, krx, kry, krz)
         for supp in getattr(model, "supports", []):
@@ -528,7 +528,7 @@ def convert_project_units(
 
             # Element loads
             for dl in getattr(lc, "element_loads", []):
-                for w_attr in ("wx", "wy", "wz", "w1", "w2"):
+                for w_attr in ("wx", "wy", "wz", "w1", "w2", "w3"):
                     v = getattr(dl, w_attr, None)
                     if v is not None:
                         setattr(dl, w_attr, float(v) * f_line_load)
@@ -581,12 +581,18 @@ def convert_project_units(
                         sf.station = float(sf.station) * f_len
                     if hasattr(sf, "P") and sf.P is not None:
                         sf.P = float(sf.P) * f_force
-                    for v_attr in ("Vy", "Vz", "v2", "v3", "shear"):
+                    for v_attr in ("V2", "V3", "Vy", "Vz", "v2", "v3", "shear"):
                         if hasattr(sf, v_attr) and getattr(sf, v_attr) is not None:
-                            setattr(sf, v_attr, float(getattr(sf, v_attr)) * f_force)
-                    for m_attr in ("My", "Mz", "m2", "m3", "moment", "T", "t"):
+                            try:
+                                setattr(sf, v_attr, float(getattr(sf, v_attr)) * f_force)
+                            except Exception:
+                                pass
+                    for m_attr in ("M2", "M3", "My", "Mz", "m2", "m3", "moment", "T", "t"):
                         if hasattr(sf, m_attr) and getattr(sf, m_attr) is not None:
-                            setattr(sf, m_attr, float(getattr(sf, m_attr)) * f_moment)
+                            try:
+                                setattr(sf, m_attr, float(getattr(sf, m_attr)) * f_moment)
+                            except Exception:
+                                pass
 
                 if hasattr(er, "max_axial") and er.max_axial is not None:
                     er.max_axial = float(er.max_axial) * f_force

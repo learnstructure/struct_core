@@ -28,11 +28,13 @@ def test_circular_section():
 
 
 def test_general_section():
-    sec = GeneralSection(id="G1", A=0.05, Iz=0.001)
+    sec = GeneralSection(id="G1", A=0.05, I3=0.001, I2=0.0005, J=0.0002)
     assert sec.id == "G1"
     assert sec.type == "general"
     assert sec.A == 0.05
-    assert sec.Iz == 0.001
+    assert sec.I3 == 0.001
+    assert sec.I2 == 0.0005
+    assert sec.J == 0.0002
 
 
 def test_invalid_dimensions():
