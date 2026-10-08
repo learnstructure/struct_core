@@ -43,6 +43,10 @@ class BeamElement(BaseElement):
         description="End release flags at j-node [ux, uy, rz]"
     )
     is_nonlinear: bool = Field(default=False, description="Flag for geometric/material nonlinearity")
+    include_shear_deformation: bool = Field(
+        default=False,
+        description="Flag indicating whether shear deformation (Timoshenko beam theory) is considered"
+    )
 
 
 class SpringElement(BaseElement):

@@ -33,6 +33,20 @@ def test_beam_element_with_releases():
     assert elem.id == "B1"
     assert elem.type == "beam"
     assert elem.release_j == [False, False, True]
+    assert elem.include_shear_deformation is False
+
+
+def test_beam_element_shear_deformation():
+    elem = BeamElement(
+        id="B2",
+        start_node=1,
+        end_node=2,
+        material_id="Steel",
+        section_id="Rect",
+        include_shear_deformation=True,
+    )
+    assert elem.include_shear_deformation is True
+
 
 
 def test_spring_element():

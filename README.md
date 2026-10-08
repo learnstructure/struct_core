@@ -248,8 +248,8 @@ project.detailing_results["ACI318"] = DetailingResult(
 |:---|:---|
 | `Node` | 2D/3D node with coordinates and optional lumped mass |
 | `ElasticMaterial`, `BilinearMaterial` | Linear and bilinear material models |
-| `RectangularSection`, `CircularSection`, `GeneralSection` | Cross-section definitions |
-| `TrussElement`, `BeamElement`, `SpringElement` | Structural element types |
+| `RectangularSection`, `CircularSection`, `GeneralSection` | Cross-section definitions (including effective shear areas `As2`, `As3` for Timoshenko beam analysis) |
+| `TrussElement`, `BeamElement`, `SpringElement` | Structural element types (including end releases and `include_shear_deformation` flag) |
 | `Support` | Boundary condition (pinned, fixed, roller, or custom spring stiffness) |
 | `PointLoad`, `DistributedLoad`, `GroundMotion` | Applied loads |
 | `LoadCase`, `LoadCombination` | Load grouping and factored combinations |

@@ -13,6 +13,7 @@ class BaseMaterial(BaseSchemaModel):
     """
     id: MaterialId = Field(description="Unique material identifier")
     name: Optional[str] = Field(default=None, description="Human-readable material name (e.g. 'Steel A36')")
+    unit_weight: Optional[float] = Field(default=None, ge=0.0, description="Weight density (force per unit volume, e.g. kN/m3, kip/in3, or pcf)")
 
 
 class ElasticMaterial(BaseMaterial):
