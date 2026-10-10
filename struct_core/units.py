@@ -168,6 +168,31 @@ class Units(BaseModel):
         """Very short label: 'kN, m' or 'kip, in' or 'kip, ft'."""
         return f"{self.force}, {self.length}"
 
+    @property
+    def is_metric(self) -> bool:
+        """True if the unit system is metric (m, mm, cm)."""
+        return self.canonical().length in ("m", "mm", "cm")
+
+    @property
+    def is_us_customary(self) -> bool:
+        """True if the unit system is US Customary (in, ft)."""
+        return self.canonical().length in ("in", "ft")
+
+    @property
+    def gravity_acceleration(self) -> float:
+        """
+        Standard gravitational acceleration g in the active length/time units.
+        - m/s^2: 9.80665
+        - mm/s^2: 9806.65
+        - cm/s^2: 980.665
+        - in/s^2: 386.08858
+        - ft/s^2: 32.17405
+        """
+        c = self.canonical()
+        len_to_m = _LENGTH_TO_M.get(c.length, 1.0)
+        time_to_s = _TIME_TO_S.get(c.time, 1.0)
+        return (9.80665 / len_to_m) * (time_to_s ** 2)
+
     def __str__(self) -> str:
         return self.label
 
@@ -287,24 +312,32 @@ def conversion_factor(
         a, b, c, d = dimension
 
     # Force ratio (from / to in N)
-    f_from = _FORCE_TO_N.get(u_from.force, 1000.0)
-    f_to = _FORCE_TO_N.get(u_to.force, 1000.0)
-    force_ratio = f_from / f_to
+    if u_from.force not in _FORCE_TO_N:
+        raise ValueError(f"Unsupported force unit '{u_from.force}'. Supported: {list(_FORCE_TO_N.keys())}")
+    if u_to.force not in _FORCE_TO_N:
+        raise ValueError(f"Unsupported force unit '{u_to.force}'. Supported: {list(_FORCE_TO_N.keys())}")
+    force_ratio = _FORCE_TO_N[u_from.force] / _FORCE_TO_N[u_to.force]
 
     # Length ratio (from / to in m)
-    l_from = _LENGTH_TO_M.get(u_from.length, 1.0)
-    l_to = _LENGTH_TO_M.get(u_to.length, 1.0)
-    length_ratio = l_from / l_to
+    if u_from.length not in _LENGTH_TO_M:
+        raise ValueError(f"Unsupported length unit '{u_from.length}'. Supported: {list(_LENGTH_TO_M.keys())}")
+    if u_to.length not in _LENGTH_TO_M:
+        raise ValueError(f"Unsupported length unit '{u_to.length}'. Supported: {list(_LENGTH_TO_M.keys())}")
+    length_ratio = _LENGTH_TO_M[u_from.length] / _LENGTH_TO_M[u_to.length]
 
     # Time ratio
-    t_from = _TIME_TO_S.get(u_from.time, 1.0)
-    t_to = _TIME_TO_S.get(u_to.time, 1.0)
-    time_ratio = t_from / t_to
+    if u_from.time not in _TIME_TO_S:
+        raise ValueError(f"Unsupported time unit '{u_from.time}'. Supported: {list(_TIME_TO_S.keys())}")
+    if u_to.time not in _TIME_TO_S:
+        raise ValueError(f"Unsupported time unit '{u_to.time}'. Supported: {list(_TIME_TO_S.keys())}")
+    time_ratio = _TIME_TO_S[u_from.time] / _TIME_TO_S[u_to.time]
 
     # Temperature difference ratio
-    th_from = _TEMP_DIFF_TO_C.get(u_from.temperature, 1.0)
-    th_to = _TEMP_DIFF_TO_C.get(u_to.temperature, 1.0)
-    temp_ratio = th_from / th_to
+    if u_from.temperature not in _TEMP_DIFF_TO_C:
+        raise ValueError(f"Unsupported temperature unit '{u_from.temperature}'. Supported: {list(_TEMP_DIFF_TO_C.keys())}")
+    if u_to.temperature not in _TEMP_DIFF_TO_C:
+        raise ValueError(f"Unsupported temperature unit '{u_to.temperature}'. Supported: {list(_TEMP_DIFF_TO_C.keys())}")
+    temp_ratio = _TEMP_DIFF_TO_C[u_from.temperature] / _TEMP_DIFF_TO_C[u_to.temperature]
 
     scale = 1.0
     if a != 0:
@@ -495,12 +528,11 @@ def convert_project_units(
             elif sec_type == "general" or hasattr(sec, "A"):
                 if hasattr(sec, "A") and sec.A is not None:
                     sec.A = float(sec.A) * f_area
-                for attr_i in ("I3", "I2", "J"):
-                    if hasattr(sec, attr_i) and getattr(sec, attr_i) is not None:
-                        try:
-                            setattr(sec, attr_i, float(getattr(sec, attr_i)) * f_inertia)
-                        except Exception:
-                            pass
+                for attr_i in ("I3", "I2", "Iz", "Iy", "J"):
+                    if hasattr(sec, attr_i):
+                        val_i = getattr(sec, attr_i)
+                        if val_i is not None:
+                            setattr(sec, attr_i, float(val_i) * f_inertia)
 
         # 5. Supports (kx, ky, kz, krx, kry, krz)
         for supp in getattr(model, "supports", []):

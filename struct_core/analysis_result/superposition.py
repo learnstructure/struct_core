@@ -108,20 +108,30 @@ def superpose_results(
                 break
 
         if ref_er is None or not ref_er.forces:
-            # Fallback if no station forces are present
-            p_tot = vy_tot = vz_tot = my_tot = mz_tot = 0.0
-            for cid, fac in active_factors.items():
-                er = case_results[cid].element_results.get(eid)
-                if er:
-                    p_tot += fac * float(getattr(er, "max_axial", 0.0) or 0.0)
-                    vy_tot += fac * float(getattr(er, "max_shear", 0.0) or 0.0)
-                    mz_tot += fac * float(getattr(er, "max_moment", 0.0) or 0.0)
+            # Check if this is a pure axial/truss element (shear and moment zero across all cases)
+            has_flexure = any(
+                abs(float(getattr(er, "max_moment", 0.0) or 0.0)) > 1e-9 or
+                abs(float(getattr(er, "max_shear", 0.0) or 0.0)) > 1e-9
+                for cid in active_factors
+                if (er := case_results[cid].element_results.get(eid)) is not None
+            )
+            if has_flexure:
+                raise ValueError(
+                    f"Element '{eid}' has flexural/shear actions but lacks section station forces. "
+                    "Linear superposition of bending moments and shear forces requires station forces "
+                    "on ElementResult to prevent invalid envelope summation."
+                )
+            p_tot = sum(
+                fac * float(getattr(er, "max_axial", 0.0) or 0.0)
+                for cid, fac in active_factors.items()
+                if (er := case_results[cid].element_results.get(eid)) is not None
+            )
             element_results[eid] = ElementResult(
                 element_id=eid,
                 forces=[],
                 max_axial=p_tot,
-                max_moment=mz_tot,
-                max_shear=vy_tot,
+                max_moment=0.0,
+                max_shear=0.0,
             )
             continue
 

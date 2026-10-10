@@ -169,3 +169,24 @@ def test_convert_project_geometry_and_results():
     # moment M3: 45 kN*m -> 33.1903 kip*ft
     f_mom = conversion_factor("kN, m", "kip, ft", "moment")
     assert pytest.approx(proj.analysis_results["DEAD"].element_results["1"].forces[0].Mz, rel=1e-4) == 45.0 * f_mom
+
+
+def test_units_properties_and_gravity():
+    u_m = Units(length="m", force="kN", time="s")
+    assert u_m.is_metric is True
+    assert u_m.is_us_customary is False
+    assert pytest.approx(u_m.gravity_acceleration, rel=1e-5) == 9.80665
+
+    u_mm = Units(length="mm", force="N", time="s")
+    assert u_mm.is_metric is True
+    assert pytest.approx(u_mm.gravity_acceleration, rel=1e-5) == 9806.65
+
+    u_in = Units(length="in", force="kip", time="s")
+    assert u_in.is_metric is False
+    assert u_in.is_us_customary is True
+    assert pytest.approx(u_in.gravity_acceleration, rel=1e-5) == 386.08858
+
+    u_ft = Units(length="ft", force="kip", time="s")
+    assert u_ft.is_metric is False
+    assert u_ft.is_us_customary is True
+    assert pytest.approx(u_ft.gravity_acceleration, rel=1e-5) == 32.17405
