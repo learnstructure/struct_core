@@ -66,10 +66,4 @@ AnalysisCase = Annotated[
     Field(discriminator="type")
 ]
 
-# Backward-compatible aliases
-BaseAnalysisCaseSchema = BaseAnalysisCase
-LinearStaticAnalysisSchema = LinearStaticAnalysis
-NonlinearStaticAnalysisSchema = NonlinearStaticAnalysis
-ModalAnalysisSchema = ModalAnalysis
-TimeHistoryAnalysisSchema = TimeHistoryAnalysis
-AnalysisCaseSchema = AnalysisCase
+

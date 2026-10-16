@@ -77,3 +77,26 @@ def test_area_load():
     assert len(lc.area_loads) == 1
     assert lc.include_self_weight is False
 
+
+def test_mass_source():
+    from struct_core import MassSource, MassSourceFactor
+
+    ms = MassSource(
+        id="MS_SEISMIC",
+        name="ASCE 7 Seismic Weight",
+        include_element_mass=True,
+        include_added_mass=True,
+        lateral_only=False,
+        factors=[
+            MassSourceFactor(load_case_id="DEAD", factor=1.0),
+            MassSourceFactor(load_case_id="LIVE", factor=0.25),
+        ],
+    )
+    assert ms.id == "MS_SEISMIC"
+    assert ms.include_element_mass is True
+    assert len(ms.factors) == 2
+    assert ms.factors[0].load_case_id == "DEAD"
+    assert ms.factors[0].factor == 1.0
+    assert ms.factors[1].factor == 0.25
+    assert ms.lateral_only is False
+

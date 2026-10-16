@@ -6,8 +6,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
-
-from .units import Units, UnitsSchema
+from .units import Units
 
 
 class Metadata(BaseModel):
@@ -26,8 +25,3 @@ class Metadata(BaseModel):
         description="ISO 8601 creation timestamp"
     )
     units: Units = Field(default_factory=Units, description="Engineering units system")
-
-
-# Backward-compatible aliases
-UnitsSchema = Units
-ModelMetadata = Metadata

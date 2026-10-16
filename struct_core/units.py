@@ -193,6 +193,27 @@ class Units(BaseModel):
         time_to_s = _TIME_TO_S.get(c.time, 1.0)
         return (9.80665 / len_to_m) * (time_to_s ** 2)
 
+    @property
+    def consistent_mass_factor(self) -> float:
+        """
+        Multiplicative factor to convert mass from `self.mass` (e.g. kg, tonne, slug, lb)
+        into consistent dynamic mass: [F] * [T]^2 / [L].
+
+        Example:
+          - (kN, m, s, kg): 1 kg * 0.001 = 0.001 kN*s^2/m (metric tonne)
+          - (N, m, s, kg): 1 kg * 1.0 = 1.0 N*s^2/m (kg)
+          - (N, mm, s, tonne): 1 tonne * 1.0 = 1.0 N*s^2/mm (tonne)
+          - (kip, in, s, slug): 1 slug * (1/12000) = 8.333e-5 kip*s^2/in
+          - (lbf, ft, s, slug): 1 slug * 1.0 = 1.0 slug
+          - (lbf, in, s, slug): 1 slug * (1/12) = 0.08333 lbf*s^2/in
+        """
+        c = self.canonical()
+        m_to_kg = _MASS_TO_KG.get(c.mass, 1.0)
+        len_to_m = _LENGTH_TO_M.get(c.length, 1.0)
+        f_to_n = _FORCE_TO_N.get(c.force, 1.0)
+        time_to_s = _TIME_TO_S.get(c.time, 1.0)
+        return (m_to_kg * len_to_m) / (f_to_n * (time_to_s ** 2))
+
     def __str__(self) -> str:
         return self.label
 
@@ -212,9 +233,18 @@ class Units(BaseModel):
                 c1.time == c2.time and
                 c1.temperature == c2.temperature)
 
+    @classmethod
+    def from_string(cls, spec: Union[str, Dict[str, Any], "Units"]) -> "Units":
+        """
+        Parse a unit specification from string, dict, or existing Units instance.
+        Examples:
+          - Units.from_string("kN, m")
+          - Units.from_string("kip, in")
+          - Units.from_string("N, mm")
+        """
+        return parse_units(spec)
 
-# Backward-compatible alias
-UnitsSchema = Units
+
 
 
 # ── Standard Engineering Presets ──────────────────────────────────────────────
@@ -228,6 +258,10 @@ PRESETS: Dict[str, Units] = {
     "kip, ft, s, °F": Units(force="kip", length="ft", time="s", mass="slug", temperature="F"),
     "lbf, in, s, °F": Units(force="lbf", length="in", time="s", mass="slug", temperature="F"),
     "lbf, ft, s, °F": Units(force="lbf", length="ft", time="s", mass="slug", temperature="F"),
+    "si": Units(force="kN", length="m", time="s", mass="kg", temperature="C"),
+    "us": Units(force="kip", length="in", time="s", mass="slug", temperature="F"),
+    "metric": Units(force="kN", length="m", time="s", mass="kg", temperature="C"),
+    "customary": Units(force="kip", length="in", time="s", mass="slug", temperature="F"),
 }
 
 
@@ -613,18 +647,12 @@ def convert_project_units(
                         sf.station = float(sf.station) * f_len
                     if hasattr(sf, "P") and sf.P is not None:
                         sf.P = float(sf.P) * f_force
-                    for v_attr in ("V2", "V3", "Vy", "Vz", "v2", "v3", "shear"):
+                    for v_attr in ("V2", "V3"):
                         if hasattr(sf, v_attr) and getattr(sf, v_attr) is not None:
-                            try:
-                                setattr(sf, v_attr, float(getattr(sf, v_attr)) * f_force)
-                            except Exception:
-                                pass
-                    for m_attr in ("M2", "M3", "My", "Mz", "m2", "m3", "moment", "T", "t"):
+                            setattr(sf, v_attr, float(getattr(sf, v_attr)) * f_force)
+                    for m_attr in ("M2", "M3", "T"):
                         if hasattr(sf, m_attr) and getattr(sf, m_attr) is not None:
-                            try:
-                                setattr(sf, m_attr, float(getattr(sf, m_attr)) * f_moment)
-                            except Exception:
-                                pass
+                            setattr(sf, m_attr, float(getattr(sf, m_attr)) * f_moment)
 
                 if hasattr(er, "max_axial") and er.max_axial is not None:
                     er.max_axial = float(er.max_axial) * f_force
@@ -633,8 +661,10 @@ def convert_project_units(
                 if hasattr(er, "max_moment") and er.max_moment is not None:
                     er.max_moment = float(er.max_moment) * f_moment
 
-    # Update Project metadata units
+    # Update Project and Model metadata units
     if getattr(target_proj, "metadata", None) is not None:
         target_proj.metadata.units = target_units
+    if getattr(target_proj, "model", None) is not None and getattr(target_proj.model, "metadata", None) is not None:
+        target_proj.model.metadata.units = target_units
 
     return target_proj

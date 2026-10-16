@@ -65,9 +65,4 @@ Element = Annotated[
     Field(discriminator="type")
 ]
 
-# Backward-compatible aliases
-BaseElementSchema = BaseElement
-TrussElementSchema = TrussElement
-BeamElementSchema = BeamElement
-SpringElementSchema = SpringElement
-ElementSchema = Element
+

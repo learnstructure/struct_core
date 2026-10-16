@@ -76,12 +76,14 @@ pip install -e .
 ```
 struct_core/
 ├── structural_model/      # What the structure is
+│   ├── units.py           #   Units, parse_units, conversion_factor
 │   ├── nodes.py           #   Node
 │   ├── materials.py       #   ElasticMaterial, BilinearMaterial
 │   ├── sections.py        #   RectangularSection, CircularSection, GeneralSection
 │   ├── elements.py        #   TrussElement, BeamElement, SpringElement
 │   ├── supports.py        #   Support
 │   ├── loads.py           #   PointLoad, DistributedLoad, AreaLoad, LoadCase, LoadCombination
+│   ├── mass_source.py     #   MassSource, MassSourceFactor
 │   ├── analysis.py        #   LinearStaticAnalysis, ModalAnalysis, TimeHistoryAnalysis
 │   ├── model.py           #   StructuralModel
 │   ├── validation.py      #   validate_structural_model
@@ -104,10 +106,38 @@ struct_core/
 │   ├── element_detailing.py  # ElementDetailingResult
 │   └── detailing_result.py   # DetailingResult
 ├── project.py             # Project (top-level lifecycle container)
-├── metadata.py            # Metadata, Units
+├── metadata.py            # Metadata
 ├── serialization.py       # to_json, from_json, save_json, load_json
 └── base.py                # BaseSchemaModel, IDType aliases
 ```
+
+---
+
+## Unified Units Architecture
+
+`struct_core` establishes a canonical unit authority for the entire structural engineering ecosystem via `Units`:
+
+```python
+from struct_core import Units, parse_units, conversion_factor
+
+# 1. Flexible natural constructor (string, kwargs, or dict)
+u1 = Units("kN, m")           # Metric: kN, m, s, C
+u2 = Units("kip, in")         # US Customary: kip, in, s, F
+u3 = Units("N, mm")           # Laboratory: N, mm, s, C
+
+# 2. Automated physical properties & constants
+print(u1.gravity_acceleration)      # 9.80665 m/s^2 (exact per length unit)
+print(u2.gravity_acceleration)      # 386.0886 in/s^2
+print(u1.consistent_mass_factor)    # 0.001 (kg -> kN*s^2/m)
+print(u1.is_metric)                 # True
+print(u2.is_us_customary)           # True
+
+# 3. Unit conversions across packages
+cf = conversion_factor("kN, m", "kip, in", "force")           # 0.224808943
+cd = conversion_factor("kN, m", "kip, in", "weight_density")  # 3.6839e-6
+```
+
+All solvers (`fem2d`, `fem3d`), load generators (`struct_load`), CAE links (`struct_link`), and drawing modules (`struct_draw`) inspect active `model.units` or `project.metadata.units` directly, eliminating manual conversion errors.
 
 ---
 
@@ -124,9 +154,10 @@ from struct_core.structural_model import (
     LinearStaticAnalysis,
     validate_structural_model,
 )
-from struct_core import Project, save_json
+from struct_core import Project, Units, save_json
 
 model = StructuralModel(
+    units=Units("kN, m"),  # or string: units="kN, m"
     nodes=[
         Node(id=1, x=0.0, y=0.0),
         Node(id=2, x=0.0, y=4.0),
@@ -246,13 +277,15 @@ project.detailing_results["ACI318"] = DetailingResult(
 
 | Classes | Description |
 |:---|:---|
+| `Units` | Canonical engineering units specification and conversion authority |
 | `Node` | 2D/3D node with coordinates and optional lumped mass |
-| `ElasticMaterial`, `BilinearMaterial` | Linear and bilinear material models |
+| `ElasticMaterial`, `BilinearMaterial` | Linear and bilinear material models (with unit_weight and rho) |
 | `RectangularSection`, `CircularSection`, `GeneralSection` | Cross-section definitions (including effective shear areas `As2`, `As3` for Timoshenko beam analysis) |
 | `TrussElement`, `BeamElement`, `SpringElement` | Structural element types (including end releases and `include_shear_deformation` flag) |
 | `Support` | Boundary condition (pinned, fixed, roller, or custom spring stiffness) |
-| `PointLoad`, `DistributedLoad`, `GroundMotion` | Applied loads |
+| `PointLoad`, `DistributedLoad`, `AreaLoad`, `GroundMotion` | Applied loads |
 | `LoadCase`, `LoadCombination` | Load grouping and factored combinations |
+| `MassSource`, `MassSourceFactor` | Dynamic mass source specification (multipliers on dead/live load cases) |
 | `LinearStaticAnalysis`, `ModalAnalysis`, `TimeHistoryAnalysis` | Analysis case definitions |
 | `StructuralModel` | Top-level model container |
 | `ElementRegistry` | Plugin registry for custom element types |

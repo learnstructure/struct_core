@@ -2,7 +2,7 @@
 Load schemas for point loads, distributed loads, ground motions, load cases, and load combinations.
 """
 
-from typing import List, Optional, Any
+from typing import Any, List, Optional
 from pydantic import Field, model_validator
 from ..base import BaseSchemaModel, ElementId, LoadCaseId, NodeId
 
@@ -118,11 +118,33 @@ class LoadCombination(BaseSchemaModel):
     factors: List[LoadCaseFactor] = Field(default_factory=list, description="List of load cases with factors")
 
 
-# Backward-compatible aliases
-PointLoadSchema = PointLoad
-DistributedLoadSchema = DistributedLoad
-AreaLoadSchema = AreaLoad
-GroundMotionSchema = GroundMotion
-LoadCaseSchema = LoadCase
-LoadCaseFactorSchema = LoadCaseFactor
-LoadCombinationSchema = LoadCombination
+class MassSourceFactor(BaseSchemaModel):
+    """
+    Multiplier factor applied to a load case for inertial mass conversion (e.g. 1.0 for DEAD, 0.25 for LIVE).
+    """
+    load_case_id: LoadCaseId = Field(description="Referenced load case ID")
+    factor: float = Field(default=1.0, description="Scale factor applied to load case forces for mass conversion")
+
+
+class MassSource(BaseSchemaModel):
+    """
+    Defines inertial mass configuration for dynamic and modal analysis.
+    """
+    id: str = Field(default="MS1", description="Unique mass source identifier")
+    name: Optional[str] = Field(default="Default Mass Source", description="Human-readable mass source name")
+    include_element_mass: bool = Field(
+        default=True,
+        description="Whether to include element mass from material density rho * A * L",
+    )
+    include_added_mass: bool = Field(
+        default=True,
+        description="Whether to include user-assigned nodal masses and element masses",
+    )
+    factors: List[MassSourceFactor] = Field(
+        default_factory=list,
+        description="List of load cases with conversion factors into inertial mass",
+    )
+    lateral_only: bool = Field(
+        default=False,
+        description="If True, mass is assigned to horizontal translational DOFs only (UX, UY). If False, assigned to all translational DOFs.",
+    )

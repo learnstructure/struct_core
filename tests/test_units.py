@@ -190,3 +190,18 @@ def test_units_properties_and_gravity():
     assert u_ft.is_metric is False
     assert u_ft.is_us_customary is True
     assert pytest.approx(u_ft.gravity_acceleration, rel=1e-5) == 32.17405
+
+    # Consistent dynamic mass factor
+    assert pytest.approx(u_m.consistent_mass_factor, rel=1e-5) == 0.001
+    u_n_m = Units(length="m", force="N", time="s", mass="kg")
+    assert pytest.approx(u_n_m.consistent_mass_factor, rel=1e-5) == 1.0
+    u_n_mm = Units(length="mm", force="N", time="s", mass="tonne")
+    assert pytest.approx(u_n_mm.consistent_mass_factor, rel=1e-5) == 1.0
+    u_kip_in = Units(length="in", force="kip", time="s", mass="slug")
+    assert pytest.approx(u_kip_in.consistent_mass_factor, rel=1e-5) == 1.0 / 12000.0
+
+    # Preset parsing
+    assert Units.from_string("si").force == "kN"
+    assert Units.from_string("si").length == "m"
+    assert Units.from_string("us").force == "kip"
+    assert Units.from_string("us").length == "in"

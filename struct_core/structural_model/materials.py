@@ -44,8 +44,4 @@ Material = Annotated[
     Field(discriminator="type")
 ]
 
-# Backward-compatible aliases
-BaseMaterialSchema = BaseMaterial
-ElasticMaterialSchema = ElasticMaterial
-BilinearMaterialSchema = BilinearMaterial
-MaterialSchema = Material
+

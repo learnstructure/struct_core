@@ -18,5 +18,4 @@ class Node(BaseSchemaModel):
     inertia: float = Field(default=0.0, ge=0.0, description="Rotational lumped inertia")
 
 
-# Backward-compatible alias
-NodeSchema = Node
+

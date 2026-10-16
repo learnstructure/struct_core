@@ -61,5 +61,4 @@ class Support(BaseSchemaModel):
         return cls(node_id=node_id, ux=True, uy=False, rz=False, name=name or "Roller-Y")
 
 
-# Backward-compatible alias
-SupportSchema = Support
+

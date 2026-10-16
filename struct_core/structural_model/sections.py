@@ -91,9 +91,4 @@ Section = Annotated[
     Field(discriminator="type")
 ]
 
-# Backward-compatible aliases
-BaseSectionSchema = BaseSection
-RectangularSectionSchema = RectangularSection
-CircularSectionSchema = CircularSection
-GeneralSectionSchema = GeneralSection
-SectionSchema = Section
+

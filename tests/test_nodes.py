@@ -1,5 +1,5 @@
 """
-Unit tests for NodeSchema.
+Unit tests for Node.
 """
 
 import pytest

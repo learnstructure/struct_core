@@ -2,7 +2,7 @@
 Project schema representing the top-level container combining metadata, structural model, and lifecycle engineering results.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 from pydantic import Field
 from .analysis_result import AnalysisResult
 from .base import BaseSchemaModel
@@ -10,6 +10,7 @@ from .design_result import DesignResult
 from .detailing_result import DetailingResult
 from .metadata import Metadata
 from .structural_model import StructuralModel
+from .units import Units, parse_units
 
 
 class Project(BaseSchemaModel):
@@ -32,6 +33,12 @@ class Project(BaseSchemaModel):
     active_analysis_case: Optional[str] = Field(
         default=None, description="Currently selected or active analysis case ID for display/design"
     )
+
+    def __init__(self, **data: Any):
+        units = data.pop("units", None)
+        super().__init__(**data)
+        if units is not None:
+            self.units = units
 
     @property
     def analysis_result(self) -> Optional[AnalysisResult]:
@@ -58,7 +65,19 @@ class Project(BaseSchemaModel):
         """Convenience accessor for the primary or first detailing result."""
         if self.detailing_results:
             return next(iter(self.detailing_results.values()))
-        return None
+    @property
+    def units(self) -> Units:
+        """Convenience accessor for project engineering units."""
+        return self.metadata.units
+
+    @units.setter
+    def units(self, val: Union[Units, str, Dict[str, Any]]):
+        u = parse_units(val) if isinstance(val, (str, dict)) else val
+        if not isinstance(u, Units):
+            raise TypeError(f"Expected Units, str, or dict, got {type(val).__name__}")
+        self.metadata.units = u
+        if self.model is not None:
+            self.model.metadata.units = u
 
     def save_json(self, path: str) -> None:
         """Save Project to a formatted JSON file."""
