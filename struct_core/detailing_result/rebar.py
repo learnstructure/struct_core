@@ -14,8 +14,8 @@ class Bar(BaseSchemaModel):
     mark: str = Field(description="Unique bar designation mark (e.g. '1B1', 'T1')")
     size: int = Field(gt=0, description="US bar size number (e.g. 4 for #4, 8 for #8) or metric diameter in mm")
     count: int = Field(default=1, gt=0, description="Quantity count of identical bars")
-    length: float = Field(gt=0.0, description="Cut length of the bar (in or mm)")
-    weight: float = Field(default=0.0, ge=0.0, description="Total weight of bars (lbs or kg)")
+    length: float = Field(gt=0.0, description="Cut length of the bar in DetailingResult.units")
+    weight: float = Field(default=0.0, ge=0.0, description="Total weight of bars in DetailingResult.units")
 
 
 class RebarLayer(BaseSchemaModel):
@@ -35,6 +35,7 @@ class StirrupLayout(BaseSchemaModel):
     legs: int = Field(default=2, gt=0, description="Number of vertical stirrup legs (e.g. 2, 4)")
     start_zone: float = Field(default=0.0, ge=0.0, description="Start distance of stirrup zone from member end")
     end_zone: float = Field(gt=0.0, description="End distance of stirrup zone from member end")
+    zone_type: Optional[str] = Field(default=None, description="Zone type: 'Lo', 'mid', 'joint', or None")
 
 
 class BarLayout(BaseSchemaModel):

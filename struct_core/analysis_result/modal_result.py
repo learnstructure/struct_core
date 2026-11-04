@@ -13,9 +13,9 @@ class ModeShape(BaseSchemaModel):
     Mode shape definition for a single natural frequency.
     """
     mode_number: int = Field(gt=0, description="Mode number (1, 2, 3...)")
-    period: float = Field(gt=0.0, description="Natural period in seconds")
-    frequency: float = Field(gt=0.0, description="Natural frequency in Hz")
-    circular_frequency: float = Field(gt=0.0, description="Circular frequency omega in rad/s")
+    period: float = Field(ge=0.0, description="Natural period in seconds")
+    frequency: float = Field(ge=0.0, description="Natural frequency in Hz")
+    circular_frequency: float = Field(ge=0.0, description="Circular frequency omega in rad/s")
     mass_participation_x: float = Field(default=0.0, ge=0.0, le=1.0, description="Mass participation ratio along X")
     mass_participation_y: float = Field(default=0.0, ge=0.0, le=1.0, description="Mass participation ratio along Y")
     displacements: Dict[NodeId, NodeDisplacement] = Field(default_factory=dict, description="Nodal mode shape displacements")

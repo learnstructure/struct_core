@@ -14,7 +14,7 @@ from struct_core.structural_model.registry import ElementRegistry
 
 
 def test_truss_element():
-    elem = TrussElement(id=1, start_node="N1", end_node="N2", material_id="Mat1", section_id="Sec1")
+    elem = TrussElement(id=1, start_node="N1", end_node="N2", section_id="Sec1")
     assert elem.id == 1
     assert elem.type == "truss"
     assert elem.start_node == "N1"
@@ -26,14 +26,31 @@ def test_beam_element_with_releases():
         id="B1",
         start_node=1,
         end_node=2,
-        material_id="Steel",
         section_id="Rect",
-        release_j=[False, False, True],  # Moment hinge at node j
+        release_j=[False, False, True],  # Moment hinge at node j (auto-expanded to 6-DOF)
     )
     assert elem.id == "B1"
     assert elem.type == "beam"
-    assert elem.release_j == [False, False, True]
+    assert elem.release_j == [False, False, False, False, False, True]
     assert elem.include_shear_deformation is False
+
+
+def test_beam_element_release_validation():
+    # Invalid length (neither 3 nor 6) raises
+    with pytest.raises(ValueError, match="must have 3 .* or 6 .* entries"):
+        BeamElement(id="B1", start_node=1, end_node=2, section_id="S", release_i=[True, False])
+
+    # Unstable mechanism: all released
+    with pytest.raises(ValueError, match="unstable mechanism"):
+        BeamElement(id="B1", start_node=1, end_node=2, section_id="S", release_i=[True] * 6, release_j=[True] * 6)
+
+    # Unstable mechanism: u1 (axial) released at both ends
+    with pytest.raises(ValueError, match="u1 .* released at both ends"):
+        BeamElement(id="B1", start_node=1, end_node=2, section_id="S", release_i=[True, False, False], release_j=[True, False, False])
+
+    # Unstable mechanism: r3 at both ends and u2 released at start
+    with pytest.raises(ValueError, match="r3 .* and u2"):
+        BeamElement(id="B1", start_node=1, end_node=2, section_id="S", release_i=[False, True, True], release_j=[False, False, True])
 
 
 def test_beam_element_shear_deformation():
@@ -41,7 +58,6 @@ def test_beam_element_shear_deformation():
         id="B2",
         start_node=1,
         end_node=2,
-        material_id="Steel",
         section_id="Rect",
         include_shear_deformation=True,
     )
@@ -63,7 +79,6 @@ def test_element_polymorphic_parsing():
         "id": "E1",
         "start_node": 1,
         "end_node": 2,
-        "material_id": "M1",
         "section_id": "S1",
     }
     parsed = adapter.validate_python(beam_data)
@@ -78,3 +93,16 @@ def test_element_registry():
 
     assert "custom_beam" in ElementRegistry.list_types()
     assert ElementRegistry.get("custom_beam") == CustomBeamElement
+
+
+def test_beam_element_stiffness_modifiers():
+    elem = BeamElement(
+        id="B_MOD",
+        start_node=1,
+        end_node=2,
+        section_id="S1",
+        stiffness_modifiers={"I3": 0.35, "I2": 0.35, "A": 0.70},
+    )
+    assert elem.stiffness_modifiers["I3"] == 0.35
+    assert elem.stiffness_modifiers["A"] == 0.70
+

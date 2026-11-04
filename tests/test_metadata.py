@@ -23,7 +23,7 @@ def test_units_custom():
 
 def test_metadata_defaults():
     meta = Metadata(title="Test Frame", author="Engineer")
-    assert meta.schema_version == "1.0.0"
+    assert meta.schema_version == "2.0.0"
     assert meta.title == "Test Frame"
     assert meta.author == "Engineer"
     assert meta.units.length == "m"

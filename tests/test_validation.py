@@ -5,11 +5,13 @@ Unit tests for structural validation rules.
 import pytest
 from struct_core.structural_model import (
     BeamElement,
+    ConcreteMaterial,
     DistributedLoad,
     ElasticMaterial,
     LoadCase,
     Node,
     PointLoad,
+    RebarMaterial,
     RectangularSection,
     StructuralModel,
     StructuralValidationError,
@@ -22,8 +24,8 @@ def test_valid_model():
     model = StructuralModel(
         nodes=[Node(id=1, x=0.0, y=0.0), Node(id=2, x=0.0, y=3.0)],
         materials=[ElasticMaterial(id="M1", E=200e9)],
-        sections=[RectangularSection(id="S1", b=0.3, h=0.3)],
-        elements=[BeamElement(id=1, start_node=1, end_node=2, material_id="M1", section_id="S1")],
+        sections=[RectangularSection(id="S1", b=0.3, h=0.3, material_id="M1")],
+        elements=[BeamElement(id=1, start_node=1, end_node=2, section_id="S1")],
         supports=[Support.fixed(node_id=1)],
         load_cases=[LoadCase(id="DL", point_loads=[PointLoad(node_id=2, fy=-10.0)])],
     )
@@ -44,29 +46,51 @@ def test_missing_node_reference():
     model = StructuralModel(
         nodes=[Node(id=1, x=0.0, y=0.0)],
         materials=[ElasticMaterial(id="M1", E=200e9)],
-        sections=[RectangularSection(id="S1", b=0.3, h=0.3)],
-        elements=[BeamElement(id=1, start_node=1, end_node=99, material_id="M1", section_id="S1")],
+        sections=[RectangularSection(id="S1", b=0.3, h=0.3, material_id="M1")],
+        elements=[BeamElement(id=1, start_node=1, end_node=99, section_id="S1")],
     )
     errors = validate_structural_model(model, raise_error=False)
     assert any("missing end_node '99'" in e for e in errors)
 
 
-def test_missing_material_or_section_reference():
+def test_missing_section_reference():
     model = StructuralModel(
         nodes=[Node(id=1, x=0.0, y=0.0), Node(id=2, x=0.0, y=3.0)],
-        elements=[BeamElement(id=1, start_node=1, end_node=2, material_id="MISSING_MAT", section_id="MISSING_SEC")],
+        elements=[BeamElement(id=1, start_node=1, end_node=2, section_id="MISSING_SEC")],
     )
     errors = validate_structural_model(model, raise_error=False)
-    assert any("missing material_id 'MISSING_MAT'" in e for e in errors)
     assert any("missing section_id 'MISSING_SEC'" in e for e in errors)
+
+
+def test_missing_material_reference_of_a_section():
+    model = StructuralModel(sections=[RectangularSection(id="S1", b=0.3, h=0.3, material_id="MISSING_MAT")])
+    errors = validate_structural_model(model, raise_error=False)
+    assert errors == ["Section 'S1' references missing material_id 'MISSING_MAT'"]
+
+
+def test_rebar_references_must_name_rebar_materials():
+    model = StructuralModel(
+        materials=[ConcreteMaterial(id="C4000", fc=27_600.0, E=24.9e6), RebarMaterial(id="G60", fy=414_000.0, E=2.0e8)],
+        sections=[
+            RectangularSection(id="OK", b=0.4, h=0.4, material_id="C4000", rebar_material_id="G60",
+                               transverse_rebar_material_id="G60", cover=0.04),
+            RectangularSection(id="BAD", b=0.4, h=0.4, material_id="C4000", rebar_material_id="C4000",
+                               transverse_rebar_material_id="G40"),
+        ],
+    )
+    errors = validate_structural_model(model, raise_error=False)
+    assert errors == [
+        "Section 'BAD' rebar_material_id 'C4000' is a 'concrete' material, not 'rebar'",
+        "Section 'BAD' references missing transverse_rebar_material_id 'G40'",
+    ]
 
 
 def test_zero_length_element():
     model = StructuralModel(
         nodes=[Node(id=1, x=2.0, y=5.0), Node(id=2, x=2.0, y=5.0)],
         materials=[ElasticMaterial(id="M1", E=200e9)],
-        sections=[RectangularSection(id="S1", b=0.3, h=0.3)],
-        elements=[BeamElement(id=1, start_node=1, end_node=2, material_id="M1", section_id="S1")],
+        sections=[RectangularSection(id="S1", b=0.3, h=0.3, material_id="M1")],
+        elements=[BeamElement(id=1, start_node=1, end_node=2, section_id="S1")],
     )
     errors = validate_structural_model(model, raise_error=False)
     assert any("zero length" in e for e in errors)

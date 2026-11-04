@@ -14,17 +14,59 @@ This enables:
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional
 from ..base import ElementId, NodeId
 from .analysis_result import AnalysisResult
 from .element_result import BeamSectionForce, ElementResult
 from .node_result import NodeDisplacement, NodeReaction, NodeResult
 
 
+def _combine_components(contributions: List[tuple], axial_indices: tuple = (0,)) -> List[float]:
+    """Combine ``(factor, values, is_spectral)`` contributions component-wise.
+
+    Signed contributions are summed linearly. For sign-less spectral cases:
+    - For axial components (indices in ``axial_indices``, e.g. axial force P or vertical reaction):
+      - If factor >= 0: adds magnitude in direction of signed sum (high compression branch).
+      - If factor < 0: subtracts magnitude from signed sum (least compression / tension branch).
+    - For flexural/shear/torsional components (indices not in ``axial_indices``):
+      Seismic demand is cyclic and reversible. The governing maximum moment/shear is always
+      combined constructively with gravity (|G| + |gamma_E * E|) to ensure full design capacity
+      is checked on both high-axial and low-axial branches.
+    """
+    n = len(contributions[0][1])
+    signed = [0.0] * n
+    spectral_terms = []
+    for fac, values, is_spectral in contributions:
+        if is_spectral:
+            spectral_terms.append((fac, values))
+        else:
+            for k in range(n):
+                signed[k] += fac * float(values[k])
+
+    if not spectral_terms:
+        return signed
+
+    result = list(signed)
+    for k in range(n):
+        s = signed[k]
+        direction = 1.0 if s >= 0.0 else -1.0
+        is_axial = k in axial_indices
+        for fac, values in spectral_terms:
+            val = abs(float(values[k]))
+            if is_axial:
+                fac_sign = 1.0 if fac >= 0.0 else -1.0
+                result[k] += fac_sign * direction * (abs(fac) * val)
+            else:
+                fac_sign = 1.0 if s != 0.0 else (1.0 if fac >= 0.0 else -1.0)
+                result[k] += fac_sign * direction * (abs(fac) * val)
+    return result
+
+
 def superpose_results(
     case_results: Dict[str, AnalysisResult],
     factors: Dict[str, float],
     output_case_id: str,
+    spectral_case_ids: Iterable[str] = (),
 ) -> AnalysisResult:
     """
     Compute linear superposition of analysis results according to combination factors.
@@ -37,6 +79,10 @@ def superpose_results(
         Load factors keyed by load_case_id (e.g. {"DEAD": 1.2, "LIVE": 1.6}).
     output_case_id : str
         Identifier for the combined result (e.g. "1.2D+1.6L").
+    spectral_case_ids : Iterable[str]
+        Cases holding sign-less peak responses (e.g. response spectrum results). Their factored
+        magnitudes are added to each component with the sign of the signed (static) sum, so
+        G +/- E yields the governing value |G| + |gamma_E * E|.
 
     Returns
     -------
@@ -45,6 +91,7 @@ def superpose_results(
         and element station forces.
     """
     # Active factors: ignore cases not in case_results or with zero factor
+    spectral = set(spectral_case_ids)
     active_factors = {
         cid: float(fac) for cid, fac in factors.items()
         if cid in case_results and abs(fac) > 1e-12
@@ -61,35 +108,26 @@ def superpose_results(
 
     node_results: Dict[NodeId, NodeResult] = {}
     for nid in all_node_ids:
-        ux = uy = uz = rx = ry = rz = 0.0
-        fx = fy = fz = mx = my = mz = 0.0
-        has_reaction = False
-
+        disp_terms = []
+        reac_terms = []
         for cid, fac in active_factors.items():
             nr = case_results[cid].node_results.get(nid)
             if nr is None:
                 continue
-            disp = nr.displacement
-            if disp is not None:
-                ux += fac * float(disp.ux)
-                uy += fac * float(disp.uy)
-                uz += fac * float(disp.uz)
-                rx += fac * float(disp.rx)
-                ry += fac * float(disp.ry)
-                rz += fac * float(disp.rz)
+            is_spec = cid in spectral
+            d = nr.displacement
+            if d is not None:
+                disp_terms.append((fac, (d.ux, d.uy, d.uz, d.rx, d.ry, d.rz), is_spec))
+            r = nr.reaction
+            if r is not None:
+                reac_terms.append((fac, (r.fx, r.fy, r.fz, r.mx, r.my, r.mz), is_spec))
 
-            reac = nr.reaction
-            if reac is not None:
-                has_reaction = True
-                fx += fac * float(reac.fx)
-                fy += fac * float(reac.fy)
-                fz += fac * float(reac.fz)
-                mx += fac * float(reac.mx)
-                my += fac * float(reac.my)
-                mz += fac * float(reac.mz)
-
+        ux, uy, uz, rx, ry, rz = _combine_components(disp_terms, axial_indices=(1, 2)) if disp_terms else [0.0] * 6
         node_disp = NodeDisplacement(ux=ux, uy=uy, uz=uz, rx=rx, ry=ry, rz=rz)
-        node_reac = NodeReaction(fx=fx, fy=fy, fz=fz, mx=mx, my=my, mz=mz) if has_reaction else None
+        node_reac = None
+        if reac_terms:
+            fx, fy, fz, mx, my, mz = _combine_components(reac_terms, axial_indices=(1, 2))
+            node_reac = NodeReaction(fx=fx, fy=fy, fz=fz, mx=mx, my=my, mz=mz)
         node_results[nid] = NodeResult(node_id=nid, displacement=node_disp, reaction=node_reac)
 
     # 2. Superpose Element Station Forces
@@ -121,11 +159,11 @@ def superpose_results(
                     "Linear superposition of bending moments and shear forces requires station forces "
                     "on ElementResult to prevent invalid envelope summation."
                 )
-            p_tot = sum(
-                fac * float(getattr(er, "max_axial", 0.0) or 0.0)
+            (p_tot,) = _combine_components([
+                (fac, (float(getattr(er, "max_axial", 0.0) or 0.0),), cid in spectral)
                 for cid, fac in active_factors.items()
                 if (er := case_results[cid].element_results.get(eid)) is not None
-            )
+            ])
             element_results[eid] = ElementResult(
                 element_id=eid,
                 forces=[],
@@ -138,20 +176,31 @@ def superpose_results(
         n_stations = len(ref_er.forces)
         stations: List[BeamSectionForce] = []
 
+        # Validate that all active cases have matching stations for this element
+        for cid in active_factors:
+            er = case_results[cid].element_results.get(eid)
+            if er is None:
+                raise ValueError(f"Cannot superpose: element '{eid}' missing in case '{cid}'")
+            if len(er.forces) != n_stations:
+                raise ValueError(
+                    f"Cannot superpose: element '{eid}' station count mismatch "
+                    f"({len(er.forces)} in case '{cid}' vs {n_stations} in reference case)"
+                )
+            for s_idx in range(n_stations):
+                if abs(float(er.forces[s_idx].station) - float(ref_er.forces[s_idx].station)) > 1e-5:
+                    raise ValueError(
+                        f"Cannot superpose: element '{eid}' station location mismatch at index {s_idx} "
+                        f"({er.forces[s_idx].station} in case '{cid}' vs {ref_er.forces[s_idx].station} in reference)"
+                    )
+
         for s_idx in range(n_stations):
             station_loc = float(ref_er.forces[s_idx].station)
-            p = vy = vz = t = my = mz = 0.0
-
+            terms = []
             for cid, fac in active_factors.items():
                 er = case_results[cid].element_results.get(eid)
-                if er and len(er.forces) > s_idx:
-                    sf = er.forces[s_idx]
-                    p += fac * float(sf.P)
-                    vy += fac * float(sf.Vy)
-                    vz += fac * float(sf.Vz)
-                    t += fac * float(sf.T)
-                    my += fac * float(sf.My)
-                    mz += fac * float(sf.Mz)
+                sf = er.forces[s_idx]
+                terms.append((fac, (sf.P, sf.Vy, sf.Vz, sf.T, sf.My, sf.Mz), cid in spectral))
+            p, vy, vz, t, my, mz = _combine_components(terms, axial_indices=(0,))
 
             stations.append(
                 BeamSectionForce(
@@ -182,6 +231,8 @@ def superpose_results(
 
     return AnalysisResult(
         analysis_case_id=output_case_id,
+        result_type="combination",
+        carries_factored_actions=True,
         node_results=node_results,
         element_results=element_results,
     )
@@ -194,15 +245,32 @@ def envelope_results(
     """
     Compile governing envelope across a set of AnalysisResult objects.
 
-    Picks maximum absolute reactions, displacements, and element forces.
+    Picks maximum absolute reactions, displacements, and element forces. Each element also keeps
+    the station forces of every enveloped result in ``combination_forces`` (keyed by the result's
+    ``analysis_case_id``, or by the keys of an already enveloped result), so the concurrent axial
+    force and moments of each combination remain available to design.
     """
     valid_results = [r for r in results if r is not None]
     if not valid_results:
         return AnalysisResult(analysis_case_id=output_case_id)
 
+    def _combination_forces(r: AnalysisResult, er: ElementResult) -> Dict[str, List[BeamSectionForce]]:
+        if er.combination_forces:
+            return dict(er.combination_forces)
+        return {str(r.analysis_case_id): list(er.forces)} if er.forces else {}
+
+    def _combination_reactions(r: AnalysisResult, nr: NodeResult) -> Dict[str, NodeReaction]:
+        if nr.combination_reactions:
+            return dict(nr.combination_reactions)
+        return {str(r.analysis_case_id): nr.reaction} if nr.reaction is not None else {}
+
     if len(valid_results) == 1:
         res_copy = valid_results[0].model_copy(deep=True)
         res_copy.analysis_case_id = output_case_id
+        for nr in res_copy.node_results.values():
+            nr.combination_reactions = _combination_reactions(valid_results[0], nr)
+        for er in res_copy.element_results.values():
+            er.combination_forces = _combination_forces(valid_results[0], er)
         return res_copy
 
     # 1. Envelope Nodes: pick the result that has the maximum displacement resultant
@@ -217,11 +285,13 @@ def envelope_results(
         best_disp_norm = -1.0
         best_reac = None
         best_reac_norm = -1.0
+        combination_reactions: Dict[str, NodeReaction] = {}
 
         for r in valid_results:
             nr = r.node_results.get(nid)
             if nr is None:
                 continue
+            combination_reactions.update(_combination_reactions(r, nr))
             if nr.displacement is not None:
                 d = nr.displacement
                 norm_d = (d.ux**2 + d.uy**2 + d.uz**2)**0.5
@@ -239,6 +309,7 @@ def envelope_results(
             node_id=nid,
             displacement=best_disp if best_disp is not None else NodeDisplacement(),
             reaction=best_reac,
+            combination_reactions=combination_reactions,
         )
 
     # 2. Envelope Elements: pick governing moment station forces and max axial/shear
@@ -251,6 +322,11 @@ def envelope_results(
         all_er = [r.element_results[eid] for r in valid_results if eid in r.element_results]
         if not all_er:
             continue
+
+        combination_forces: Dict[str, List[BeamSectionForce]] = {}
+        for r in valid_results:
+            if eid in r.element_results:
+                combination_forces.update(_combination_forces(r, r.element_results[eid]))
 
         # Governing station profile is the one producing the maximum absolute moment
         gov_er = max(all_er, key=lambda er: abs(getattr(er, "max_moment", 0.0) or 0.0))
@@ -267,6 +343,7 @@ def envelope_results(
         element_results[eid] = ElementResult(
             element_id=eid,
             forces=gov_er.forces,
+            combination_forces=combination_forces,
             max_axial=max_ax,
             max_moment=max_mo,
             max_shear=max_sh,
@@ -274,6 +351,9 @@ def envelope_results(
 
     return AnalysisResult(
         analysis_case_id=output_case_id,
+        result_type="envelope",
+        carries_factored_actions=any(getattr(r, "carries_factored_actions", False) for r in valid_results),
+        governing_combinations=[r.analysis_case_id for r in valid_results],
         node_results=node_results,
         element_results=element_results,
     )

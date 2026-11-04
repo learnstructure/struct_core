@@ -22,6 +22,7 @@ from .analysis import (
     ModalAnalysis,
     NonlinearStaticAnalysis,
     TimeHistoryAnalysis,
+    ResponseSpectrumAnalysis,
 )
 from .elements import (
     BaseElement,
@@ -33,6 +34,7 @@ from .elements import (
 from .loads import (
     AreaLoad,
     DistributedLoad,
+    ElementPointLoad,
     GroundMotion,
     LoadCase,
     LoadCaseFactor,
@@ -40,12 +42,16 @@ from .loads import (
     MassSource,
     MassSourceFactor,
     PointLoad,
+    VALID_LOAD_TYPES,
+    classify_load_case,
 )
 from .materials import (
     BaseMaterial,
     BilinearMaterial,
+    ConcreteMaterial,
     ElasticMaterial,
     Material,
+    RebarMaterial,
 )
 from .model import StructuralModel
 from .nodes import Node
@@ -55,9 +61,18 @@ from .sections import (
     GeneralSection,
     RectangularSection,
     Section,
+    SolidSection,
 )
 from .registry import ElementRegistry
 from .supports import Support
+from .topology import (
+    FrameStory,
+    classify_frame_members,
+    frame_levels,
+    frame_stories,
+    node_elevation,
+    vertical_axis,
+)
 from .validation import StructuralValidationError, validate_structural_model
 
 __all__ = [
@@ -75,10 +90,13 @@ __all__ = [
     # Materials
     "BaseMaterial",
     "ElasticMaterial",
+    "ConcreteMaterial",
+    "RebarMaterial",
     "BilinearMaterial",
     "Material",
     # Sections
     "BaseSection",
+    "SolidSection",
     "RectangularSection",
     "CircularSection",
     "GeneralSection",
@@ -95,6 +113,9 @@ __all__ = [
     # Loads
     "AreaLoad",
     "PointLoad",
+    "ElementPointLoad",
+    "VALID_LOAD_TYPES",
+    "classify_load_case",
     "DistributedLoad",
     "GroundMotion",
     "LoadCase",
@@ -108,9 +129,17 @@ __all__ = [
     "NonlinearStaticAnalysis",
     "ModalAnalysis",
     "TimeHistoryAnalysis",
+    "ResponseSpectrumAnalysis",
     "AnalysisCase",
     # Containers
     "StructuralModel",
+    # Topology
+    "FrameStory",
+    "classify_frame_members",
+    "frame_levels",
+    "frame_stories",
+    "node_elevation",
+    "vertical_axis",
     # Validation
     "validate_structural_model",
     "StructuralValidationError",

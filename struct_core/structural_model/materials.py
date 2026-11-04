@@ -1,5 +1,9 @@
 """
-Material schemas for linear elastic and nonlinear materials.
+Material schemas: linear elastic, bilinear, and the reinforced-concrete materials (concrete, reinforcing bars).
+
+All values are in the model's unit system (``StructuralModel.units``): moduli and strengths in its stress unit,
+``unit_weight`` in its weight-density unit, ``rho`` in its mass-density unit. Concrete and rebar are linear elastic
+materials for analysis (they subclass :class:`ElasticMaterial`) that also carry their design strengths.
 """
 
 from typing import Annotated, Literal, Optional, Union
@@ -26,6 +30,27 @@ class ElasticMaterial(BaseMaterial):
     rho: float = Field(default=0.0, ge=0.0, description="Mass density")
 
 
+class ConcreteMaterial(ElasticMaterial):
+    """
+    Concrete: linear elastic for analysis, with its specified compressive strength for design.
+
+    ``E`` is stored, not derived: struct_core holds data only, so the modulus (e.g. ACI 318 §19.2.2.1) is computed by
+    whoever creates the material.
+    """
+    type: Literal["concrete"] = "concrete"
+    fc: float = Field(gt=0.0, description="Specified compressive strength f'c (model stress unit)")
+    nu: float = Field(default=0.2, ge=-1.0, le=0.5, description="Poisson's ratio")
+
+
+class RebarMaterial(ElasticMaterial):
+    """
+    Reinforcing steel: linear elastic (``E`` = Es), with its specified yield and tensile strengths for design.
+    """
+    type: Literal["rebar"] = "rebar"
+    fy: float = Field(gt=0.0, description="Specified yield strength fy (model stress unit)")
+    fu: Optional[float] = Field(default=None, gt=0.0, description="Specified tensile strength fu (model stress unit)")
+
+
 class BilinearMaterial(BaseMaterial):
     """
     Bilinear elastoplastic material definition.
@@ -40,8 +65,6 @@ class BilinearMaterial(BaseMaterial):
 
 # Discriminated union for polymorphic material deserialization
 Material = Annotated[
-    Union[ElasticMaterial, BilinearMaterial],
+    Union[ElasticMaterial, ConcreteMaterial, RebarMaterial, BilinearMaterial],
     Field(discriminator="type")
 ]
-
-

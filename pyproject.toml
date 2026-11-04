@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "struct_core"
-version = "0.2.0"
+version = "0.3.0"
 description = "A common engineering schema for 2D/3D structural analysis and structural dynamics."
 authors = [{name = "Abinash Mandal", email = "abinashmandal33486@gmail.com"}]
 readme = "README.md"

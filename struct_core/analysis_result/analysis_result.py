@@ -2,9 +2,10 @@
 Top-level composite AnalysisResult schema holding nodal, element, modal, and dynamic time history outputs.
 """
 
-from typing import Dict, Optional
-from pydantic import Field
-from ..base import AnalysisCaseId, BaseSchemaModel, ElementId, NodeId
+from typing import Dict, List, Literal, Optional
+from pydantic import Field, model_validator
+from ..base import AnalysisCaseId, BaseSchemaModel, ElementId, NodeId, ResultDict
+from ..design_result.code_check import CodeCheckResult
 from .element_result import ElementResult
 from .modal_result import ModalResult
 from .node_result import NodeResult
@@ -17,10 +18,40 @@ class AnalysisResult(BaseSchemaModel):
     Stores nodal displacements/reactions, element forces, modal results, and time history responses.
     """
     analysis_case_id: AnalysisCaseId = Field(description="Associated analysis case identifier")
+    result_type: Literal["case", "combination", "envelope", "modal", "rsa", "time_history"] = Field(
+        default="case", description="Type of analysis result"
+    )
+    carries_factored_actions: bool = Field(
+        default=False, description="True if forces represent factored design actions ready for code design"
+    )
+    governing_combinations: List[str] = Field(
+        default_factory=list, description="IDs of combinations enveloped if result_type=='envelope'"
+    )
     node_results: Dict[NodeId, NodeResult] = Field(default_factory=dict, description="Nodal output results keyed by NodeId")
     element_results: Dict[ElementId, ElementResult] = Field(default_factory=dict, description="Element output results keyed by ElementId")
     modal_result: Optional[ModalResult] = Field(default=None, description="Modal eigenvalue analysis results (if applicable)")
     time_history_result: Optional[TimeHistoryResult] = Field(default=None, description="Dynamic time history analysis results (if applicable)")
+    stiffness_basis: Literal["gross", "cracked"] = Field(
+        default="gross",
+        description="Member stiffness used: gross sections, or cracked sections per ACI 318 Table 6.6.3.1.1",
+    )
+    code_checks: List[CodeCheckResult] = Field(
+        default_factory=list,
+        description="Frame-level checks evaluated with the analysis (slenderness, story drift, P-delta stability)",
+    )
+    model_fingerprint: Optional[str] = Field(
+        default=None,
+        description="Hash of the model inputs the result was computed from; a design check refuses a result whose "
+                    "model has changed since (None: not recorded)",
+    )
+
+    @model_validator(mode="after")
+    def _wrap_result_dicts(self) -> "AnalysisResult":
+        if self.node_results and not isinstance(self.node_results, ResultDict):
+            object.__setattr__(self, "node_results", ResultDict(self.node_results))
+        if self.element_results and not isinstance(self.element_results, ResultDict):
+            object.__setattr__(self, "element_results", ResultDict(self.element_results))
+        return self
 
     @property
     def nodal_displacements(self) -> list:

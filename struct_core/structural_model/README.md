@@ -7,13 +7,14 @@ The **input engineering model** subpackage — the canonical definition of *what
 | Module | Contents |
 |:---|:---|
 | `nodes.py` | `Node`, `NodeSchema` |
-| `materials.py` | `BaseMaterial`, `ElasticMaterial`, `BilinearMaterial`, `Material` (discriminated union) |
-| `sections.py` | `BaseSection`, `RectangularSection`, `CircularSection`, `GeneralSection`, `Section` (discriminated union) |
+| `materials.py` | `BaseMaterial`, `ElasticMaterial`, `ConcreteMaterial`, `RebarMaterial`, `BilinearMaterial`, `Material` (discriminated union) |
+| `sections.py` | `BaseSection` (with `material_id`), `SolidSection` (reinforcement and cover), `RectangularSection`, `CircularSection`, `GeneralSection`, `Section` (discriminated union) |
 | `elements.py` | `BaseElement`, `TrussElement`, `BeamElement`, `SpringElement`, `Element` (discriminated union) |
 | `supports.py` | `Support` (with `pinned`, `fixed`, `roller_x`, `roller_y` class-method factories) |
 | `loads.py` | `PointLoad`, `DistributedLoad`, `GroundMotion`, `LoadCase`, `LoadCaseFactor`, `LoadCombination` |
 | `analysis.py` | `BaseAnalysisCase`, `LinearStaticAnalysis`, `NonlinearStaticAnalysis`, `ModalAnalysis`, `TimeHistoryAnalysis`, `AnalysisCase` (discriminated union) |
-| `model.py` | `StructuralModel` (aggregate container for all the above) |
+| `model.py` | `StructuralModel` (aggregate container for all the above; `section_of`, `material_of`) |
+| `migration.py` | `migrate_element_materials`: loads models saved with `material_id` on elements |
 | `validation.py` | `validate_structural_model`, `StructuralValidationError` |
 | `registry.py` | `ElementRegistry` (singleton plugin registry for custom element types) |
 

@@ -108,11 +108,11 @@ def test_convert_project_geometry_and_results():
     proj.model.materials = [mat]
 
     # Section: Rectangular 0.3m x 0.5m
-    sec = RectangularSection(id="B1", b=0.3, h=0.5)
+    sec = RectangularSection(id="B1", b=0.3, h=0.5, material_id="CONC")
     proj.model.sections = [sec]
 
     # Element
-    elem = BeamElement(id="1", start_node="1", end_node="2", material_id="CONC", section_id="B1")
+    elem = BeamElement(id="1", start_node="1", end_node="2", section_id="B1")
     proj.model.elements = [elem]
 
     # Support with spring
@@ -205,3 +205,104 @@ def test_units_properties_and_gravity():
     assert Units.from_string("si").length == "m"
     assert Units.from_string("us").force == "kip"
     assert Units.from_string("us").length == "in"
+
+
+def test_convert_reinforced_concrete_inputs():
+    """Strengths, weight densities, cover, general-section shear areas and recorded design inputs all convert."""
+    from struct_core import (ConcreteMaterial, DesignInputs, DesignResult, GeneralSection, Project, RebarMaterial,
+                             StructuralModel)
+
+    model = StructuralModel(
+        materials=[ConcreteMaterial(id="C4000", fc=27_600.0, E=24.9e6, unit_weight=23.6),
+                   RebarMaterial(id="G60", fy=414_000.0, fu=620_000.0, E=2.0e8, unit_weight=77.0)],
+        sections=[RectangularSection(id="COL", b=0.45, h=0.45, material_id="C4000", rebar_material_id="G60", cover=0.04),
+                  GeneralSection(id="GEN", material_id="G60", A=0.01, I3=1e-4, I2=5e-5, J=1e-5, As2=0.008, As3=0.007)],
+    )
+    proj = Project(model=model, units="kN, m")
+    # The record shares the model's material object: it must still be converted once
+    proj.design_results["D"] = DesignResult(inputs=DesignInputs(
+        design_code="ACI 318-25", materials=[model.materials[0]], sections=[model.sections[0].model_copy()],
+        allowable_bearing_pressure=150.0, footing_cover=0.075))
+    proj.convert_units("kip, in")
+
+    concrete, rebar = proj.model.materials
+    col, gen = proj.model.sections
+    assert concrete.fc == pytest.approx(4.0030, abs=1e-4)                 # ksi
+    assert concrete.unit_weight * 1728.0 * 1000.0 == pytest.approx(150.24, abs=0.01)  # kip/in^3 -> pcf
+    assert (rebar.fy, rebar.fu) == (pytest.approx(60.046, abs=1e-3), pytest.approx(89.924, abs=1e-3))
+    assert col.cover == pytest.approx(1.5748, abs=1e-4)
+    assert (gen.As2, gen.As3) == (pytest.approx(12.400, abs=1e-3), pytest.approx(10.850, abs=1e-3))  # in^2
+    assert gen.I2 == pytest.approx(120.13, abs=0.01)                      # in^4
+    inputs = proj.design_results["D"].inputs
+    assert inputs.materials[0].fc == pytest.approx(4.0030, abs=1e-4)
+    assert inputs.sections[0].cover == pytest.approx(1.5748, abs=1e-4)
+    assert inputs.allowable_bearing_pressure * 144.0 == pytest.approx(3.1328, abs=1e-4)  # ksi -> ksf
+    assert inputs.footing_cover == pytest.approx(2.9528, abs=1e-4)
+
+    proj.convert_units("kN, m")
+    assert proj.model.materials[0].fc == pytest.approx(27_600.0)
+    assert proj.model.materials[0].unit_weight == pytest.approx(23.6)
+    assert proj.design_results["D"].inputs.allowable_bearing_pressure == pytest.approx(150.0)
+
+
+def test_convert_combination_reactions_and_forces():
+    """Envelope combination_reactions and combination_forces convert along with primary results."""
+    from struct_core.analysis_result import envelope_results
+    from struct_core.structural_model import SpringElement
+
+    proj = Project(units="kN, m")
+    proj.model.nodes = [Node(id="1", x=0.0, y=0.0, z=0.0), Node(id="2", x=0.0, y=0.0, z=3.0)]
+    proj.model.elements = [SpringElement(id="S1", start_node="1", end_node="2", kx=1000.0, ky=2000.0)]
+    proj.model.load_cases = [
+        LoadCase(id="DEAD", element_loads=[DistributedLoad(element_id="S1", wy=-10.0, wy_end=-20.0)])
+    ]
+    r1 = AnalysisResult(
+        analysis_case_id="C1",
+        node_results={"1": NodeResult(node_id="1", reaction=NodeReaction(fz=100.0, my=30.0))},
+        element_results={"S1": ElementResult(element_id="S1", forces=[BeamSectionForce(station=0.0, P=-100.0, M3=30.0)])},
+    )
+    r2 = AnalysisResult(
+        analysis_case_id="C2",
+        node_results={"1": NodeResult(node_id="1", reaction=NodeReaction(fz=60.0, my=80.0))},
+        element_results={"S1": ElementResult(element_id="S1", forces=[BeamSectionForce(station=0.0, P=-60.0, M3=80.0)])},
+    )
+    env = envelope_results([r1, r2], output_case_id="ENV")
+    assert set(env.node_results["1"].combination_reactions) == {"C1", "C2"}
+    proj.analysis_results["ENV"] = env
+
+    f_force = conversion_factor("kN, m", "kip, ft", "force")
+    f_mom = conversion_factor("kN, m", "kip, ft", "moment")
+    f_line = conversion_factor("kN, m", "kip, ft", "line_load")
+    proj.convert_units("kip, ft")
+
+    assert proj.model.elements[0].kx == pytest.approx(1000.0 * f_line)
+    assert proj.model.load_cases[0].element_loads[0].wy_end == pytest.approx(-20.0 * f_line)
+    comb_reac = proj.analysis_results["ENV"].node_results["1"].combination_reactions["C2"]
+    assert comb_reac.fz == pytest.approx(60.0 * f_force)
+    assert comb_reac.my == pytest.approx(80.0 * f_mom)
+    comb_force = proj.analysis_results["ENV"].element_results["S1"].combination_forces["C2"][0]
+    assert comb_force.P == pytest.approx(-60.0 * f_force)
+    assert comb_force.M3 == pytest.approx(80.0 * f_mom)
+
+
+def test_mass_and_mass_density_conversion_factor():
+    """F7 regression test: mass and mass_density conversion factor between SI and imperial."""
+    # 2400 kg/m^3 to slug/in^3
+    f_density = conversion_factor("kN, m", "kip, in", "mass_density")
+    assert 2400.0 * f_density == pytest.approx(0.0026949, rel=1e-4)
+
+    # 1000 kg to slug
+    f_mass = conversion_factor("kN, m", "kip, in", "mass")
+    assert 1000.0 * f_mass == pytest.approx(68.52176, rel=1e-4)
+
+
+def test_project_metadata_units_assignment_syncs_model():
+    """F14.2: Direct assignment to project.metadata.units syncs project.model.units."""
+    proj = Project(units="kN, m")
+    assert proj.metadata.units == parse_units("kN, m")
+    assert proj.model.units == parse_units("kN, m")
+
+    proj.metadata.units = parse_units("kip, in")
+    assert proj.metadata.units == parse_units("kip, in")
+    assert proj.model.units == parse_units("kip, in")
+

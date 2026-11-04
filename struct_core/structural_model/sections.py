@@ -1,11 +1,16 @@
 """
 Cross-section schemas for geometric and explicit general sections.
+
+A section is the complete definition of a member cross-section: its geometry and its material (``material_id``), as
+in ETABS and SAP2000. Elements reference only a section, so the same shape in two materials is two sections.
+Rectangular and circular sections may be reinforced concrete: they then also name their reinforcing-bar materials
+and clear cover. Lengths are in the model length unit.
 """
 
 import math
-from typing import Annotated, Literal, Optional, Union
-from pydantic import AliasChoices, Field
-from ..base import BaseSchemaModel, SectionId
+from typing import Annotated, Any, Literal, Optional, Union
+from pydantic import AliasChoices, Field, model_validator
+from ..base import BaseSchemaModel, MaterialId, SectionId
 
 
 class BaseSection(BaseSchemaModel):
@@ -14,9 +19,26 @@ class BaseSection(BaseSchemaModel):
     """
     id: SectionId = Field(description="Unique section identifier")
     name: Optional[str] = Field(default=None, description="Human-readable section name (e.g. 'W14x90')")
+    material_id: MaterialId = Field(description="Material of the section (for reinforced concrete, its concrete)")
 
 
-class RectangularSection(BaseSection):
+class SolidSection(BaseSection):
+    """
+    Solid cross-section that may be reinforced concrete. For a concrete section, the reinforcement fields name the
+    longitudinal and transverse bar materials (``RebarMaterial``) and the clear cover; design reads them from here.
+    """
+    rebar_material_id: Optional[MaterialId] = Field(
+        default=None, description="Longitudinal reinforcing-bar material (RebarMaterial; fy)"
+    )
+    transverse_rebar_material_id: Optional[MaterialId] = Field(
+        default=None, description="Transverse reinforcement material: stirrups, ties, hoops (RebarMaterial; fyt)"
+    )
+    cover: Optional[float] = Field(
+        default=None, gt=0.0, description="Clear cover to the outermost (transverse) reinforcement, model length unit"
+    )
+
+
+class RectangularSection(SolidSection):
     """
     Geometric rectangular cross-section definition.
     Stores pure geometric parameters (b, h):
@@ -38,7 +60,7 @@ class RectangularSection(BaseSection):
         return (5.0 / 6.0) * (self.b * self.h)
 
 
-class CircularSection(BaseSection):
+class CircularSection(SolidSection):
     """
     Geometric circular cross-section definition.
     Stores pure geometric parameter (d).

@@ -45,9 +45,10 @@ Every tool speaks one neutral engineering language. Solvers and design packages 
 
 - **Four-Subpackage Architecture** — Clean separation of concerns across the engineering lifecycle: input model, analysis outputs, design outputs, and detailing outputs.
 - **Declarative Domain Models** — Pure data schemas with no solver logic, no matrix math, and no design equations.
-- **Pydantic v2 Validation** — Strong type checking, referential integrity (missing node/material/section references), duplicate ID detection, and zero-length element checks.
+- **Pydantic v2 Validation** — Strong type checking, referential integrity (element → node/section, section → material, reinforcing-bar references → rebar materials), duplicate ID detection, and zero-length element checks.
 - **JSON Serialization** — Full round-trip JSON and Python dict import/export with `to_json()`, `from_json()`, `save_json()`, and `load_json()`.
-- **Polymorphic Type System** — Discriminated unions for materials (`elastic`, `bilinear`), sections (`rectangular`, `circular`, `general`), elements (`beam`, `truss`, `spring`), and analysis cases (`linear_static`, `nonlinear_static`, `modal`, `time_history`).
+- **Sections Own Their Materials** — A section is the complete cross-section definition (geometry, material, and for reinforced concrete its bar materials and clear cover), as in ETABS / SAP2000. Elements reference only a section; `StructuralModel.material_of(element)` resolves the material.
+- **Polymorphic Type System** — Discriminated unions for materials (`elastic`, `concrete`, `rebar`, `bilinear`), sections (`rectangular`, `circular`, `general`), elements (`beam`, `truss`, `spring`), and analysis cases (`linear_static`, `nonlinear_static`, `modal`, `time_history`).
 - **Full Project Lifecycle Container** — `Project` wraps `Metadata`, `StructuralModel`, `AnalysisResult`, `DesignResult`, and `DetailingResult` in one serializable object.
 - **Lightweight Plugin Registry** — Register custom element types via `@ElementRegistry.register("custom_type")` without modifying core source code.
 - **3D Ready** — Nodes carry `(x, y, z)` coordinates with `z=0.0` default, ensuring a clean upgrade path to full 3D support.
@@ -78,14 +79,15 @@ struct_core/
 ├── structural_model/      # What the structure is
 │   ├── units.py           #   Units, parse_units, conversion_factor
 │   ├── nodes.py           #   Node
-│   ├── materials.py       #   ElasticMaterial, BilinearMaterial
-│   ├── sections.py        #   RectangularSection, CircularSection, GeneralSection
+│   ├── materials.py       #   ElasticMaterial, ConcreteMaterial, RebarMaterial, BilinearMaterial
+│   ├── sections.py        #   RectangularSection, CircularSection (SolidSection), GeneralSection
 │   ├── elements.py        #   TrussElement, BeamElement, SpringElement
 │   ├── supports.py        #   Support
 │   ├── loads.py           #   PointLoad, DistributedLoad, AreaLoad, LoadCase, LoadCombination
 │   ├── mass_source.py     #   MassSource, MassSourceFactor
 │   ├── analysis.py        #   LinearStaticAnalysis, ModalAnalysis, TimeHistoryAnalysis
-│   ├── model.py           #   StructuralModel
+│   ├── model.py           #   StructuralModel (get_material, get_section, section_of, material_of)
+│   ├── migration.py       #   loads models saved with element material_id (before 0.3)
 │   ├── validation.py      #   validate_structural_model
 │   └── registry.py        #   ElementRegistry
 ├── analysis_result/       # How the structure responds (produced by fem2d, structdyn)
@@ -98,6 +100,7 @@ struct_core/
 │   ├── code_check.py      #   CodeCheckResult
 │   ├── material_design.py #   FlexureDesignResult, ShearDesignResult
 │   ├── element_design.py  #   ElementDesignResult
+│   ├── design_inputs.py   #   DesignInputs, AppliedDefault
 │   └── design_result.py   #   DesignResult
 ├── detailing_result/      # What gets drawn and built (produced by aci318, consumed by struct_draw)
 │   ├── rebar.py           #   Bar, RebarLayer, StirrupLayout, BarLayout
@@ -167,14 +170,14 @@ model = StructuralModel(
     materials=[
         ElasticMaterial(id="Steel", E=200e9, rho=7850.0),
     ],
-    sections=[
-        RectangularSection(id="Col",  b=0.30, h=0.30),
-        RectangularSection(id="Beam", b=0.25, h=0.45),
+    sections=[  # a section owns its material
+        RectangularSection(id="Col",  b=0.30, h=0.30, material_id="Steel"),
+        RectangularSection(id="Beam", b=0.25, h=0.45, material_id="Steel"),
     ],
-    elements=[
-        BeamElement(id=1, start_node=1, end_node=2, material_id="Steel", section_id="Col"),
-        BeamElement(id=2, start_node=2, end_node=3, material_id="Steel", section_id="Beam"),
-        BeamElement(id=3, start_node=3, end_node=4, material_id="Steel", section_id="Col"),
+    elements=[  # an element references only its section
+        BeamElement(id=1, start_node=1, end_node=2, section_id="Col"),
+        BeamElement(id=2, start_node=2, end_node=3, section_id="Beam"),
+        BeamElement(id=3, start_node=3, end_node=4, section_id="Col"),
     ],
     supports=[
         Support.fixed(node_id=1),
@@ -280,25 +283,29 @@ project.detailing_results["ACI318"] = DetailingResult(
 | `Units` | Canonical engineering units specification and conversion authority |
 | `Node` | 2D/3D node with coordinates and optional lumped mass |
 | `ElasticMaterial`, `BilinearMaterial` | Linear and bilinear material models (with unit_weight and rho) |
-| `RectangularSection`, `CircularSection`, `GeneralSection` | Cross-section definitions (including effective shear areas `As2`, `As3` for Timoshenko beam analysis) |
-| `TrussElement`, `BeamElement`, `SpringElement` | Structural element types (including end releases and `include_shear_deformation` flag) |
+| `ConcreteMaterial`, `RebarMaterial` | Reinforced-concrete materials: elastic for analysis (subclasses of `ElasticMaterial`) with their design strengths, concrete `fc` and rebar `fy` / `fu`, in the model stress unit |
+| `RectangularSection`, `CircularSection`, `GeneralSection` | Cross-section definitions, each with its `material_id` (including effective shear areas `As2`, `As3` for Timoshenko beam analysis). Rectangular and circular sections may be reinforced concrete: `rebar_material_id` (longitudinal, fy), `transverse_rebar_material_id` (stirrups and ties, fyt) and clear `cover` |
+| `TrussElement`, `BeamElement`, `SpringElement` | Structural element types (including end releases and `include_shear_deformation` flag); truss and beam elements reference a `section_id` |
 | `Support` | Boundary condition (pinned, fixed, roller, or custom spring stiffness) |
 | `PointLoad`, `DistributedLoad`, `AreaLoad`, `GroundMotion` | Applied loads |
 | `LoadCase`, `LoadCombination` | Load grouping and factored combinations |
 | `MassSource`, `MassSourceFactor` | Dynamic mass source specification (multipliers on dead/live load cases) |
 | `LinearStaticAnalysis`, `ModalAnalysis`, `TimeHistoryAnalysis` | Analysis case definitions |
-| `StructuralModel` | Top-level model container |
+| `StructuralModel` | Top-level model container; `get_material`, `get_section`, `section_of(element)`, `material_of(element or section)` resolve references. Models saved with `material_id` on elements (before 0.3) are migrated on load: the material moves to the section, and a section shared by several materials is split (`COL`, `COL_C30`) |
 | `ElementRegistry` | Plugin registry for custom element types |
+| `classify_frame_members`, `frame_stories`, `frame_levels`, `vertical_axis`, `node_elevation` | Frame topology: column/beam/brace roles and story bands (`FrameStory`), shared by the analysis and design packages |
+
+`Project.seismic_basis` (`SeismicDesignBasis`) records the seismic design basis: system, R, Ω0, Cd, I_e, Risk Category, S_DS, S_D1, S1, SDC, ρ, procedure, and lateral case IDs. The drift checks and the ACI 318 Chapter 18 frame checks read it. `elf_inputs` keeps the ELF generation inputs, so the weight-dependent story forces can be regenerated when members are resized.
 
 ### `analysis_result` — Analysis Outputs
 
 | Classes | Description |
 |:---|:---|
 | `NodeDisplacement`, `NodeReaction`, `NodeResult` | Nodal displacements, rotations, and reactions |
-| `BeamSectionForce`, `ElementResult` | Internal forces along beam elements |
+| `BeamSectionForce`, `ElementResult` | Internal forces along beam elements (axial force tension positive). `envelope_results` keeps every enveloped combination's station forces in `ElementResult.combination_forces`, so design can check concurrent forces |
 | `ModeShape`, `ModalResult` | Natural periods and mode shapes |
 | `TimeHistoryResult` | Time-series dynamic response |
-| `AnalysisResult` | Container keyed by analysis case ID |
+| `AnalysisResult` | Container keyed by analysis case ID. `stiffness_basis` (`gross` or `cracked`) records the member stiffness used; `code_checks` holds frame-level analysis checks (slenderness, story drift, stability) |
 
 ### `design_result` — Design Outputs
 
@@ -307,7 +314,8 @@ project.detailing_results["ACI318"] = DetailingResult(
 | `CodeCheckResult` | Demand/capacity ratio (DCR) and pass/fail per code clause |
 | `FlexureDesignResult`, `ShearDesignResult` | Strength design results |
 | `ElementDesignResult` | Composite design summary per member |
-| `DesignResult` | Container keyed by element ID |
+| `DesignResult` | Container keyed by element ID. `system_checks` holds checks that belong to no single member (joints, story drift, stability); they count toward `governing_dcr`. `inputs` records what the design used |
+| `DesignInputs`, `AppliedDefault` | Inputs of a design, in model units: copies of the designed materials and sections, the allowable soil bearing pressure and footing cover (`None` when foundations were not designed), and the defaults applied where the user gave no value |
 
 ### `detailing_result` — Detailing Outputs
 

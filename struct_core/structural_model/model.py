@@ -2,15 +2,15 @@
 Root StructuralModel container holding nodes, elements, materials, sections, supports, loads, and analysis cases.
 """
 
-from typing import Any, Dict, List, Optional, Union
-from pydantic import Field
-from ..base import BaseSchemaModel
-from ..metadata import Metadata
+from typing import Any, Dict, List, Literal, Optional, Union
+from pydantic import Field, field_validator, model_validator
+from ..base import BaseSchemaModel, ElementId, MaterialId, SectionId
 from ..units import Units, parse_units
 from .analysis import AnalysisCase
 from .elements import Element
 from .loads import AreaLoad, GroundMotion, LoadCase, LoadCombination, MassSource
 from .materials import Material
+from .migration import migrate_element_materials
 from .nodes import Node
 from .sections import Section
 from .supports import Support
@@ -19,8 +19,13 @@ from .supports import Support
 class StructuralModel(BaseSchemaModel):
     """
     Main structural model container holding physical, material, boundary condition, and loading data.
+
+    Elements reference sections and sections reference materials; :meth:`section_of` and :meth:`material_of`
+    resolve them. Units and project metadata are owned canonically by `Project.metadata`.
     """
-    metadata: Metadata = Field(default_factory=Metadata, description="Model metadata and units")
+    dimension: Optional[Literal["2D", "3D"]] = Field(default=None, description="Spatial dimensionality ('2D' or '3D')")
+    vertical_axis: Optional[Literal["Y", "Z"]] = Field(default=None, description="Global vertical / gravity axis ('Y' or 'Z')")
+    units: Optional[Units] = Field(default=None, description="Model engineering units when used standalone")
     nodes: List[Node] = Field(default_factory=list, description="List of structural nodes")
     elements: List[Element] = Field(default_factory=list, description="List of structural elements")
     materials: List[Material] = Field(default_factory=list, description="List of material definitions")
@@ -35,22 +40,43 @@ class StructuralModel(BaseSchemaModel):
     mass_source: Optional[MassSource] = Field(default=None, description="Active mass source configuration for modal and dynamic analysis")
     mass_sources: List[MassSource] = Field(default_factory=list, description="List of defined mass sources")
 
+    @field_validator("units", mode="before")
+    @classmethod
+    def _validate_units(cls, val: Any) -> Optional[Units]:
+        if val is None or isinstance(val, Units):
+            return val
+        return parse_units(val)
+
     def __init__(self, **data: Any):
-        units = data.pop("units", None)
+        meta = data.pop("metadata", None)
+        if "units" not in data and isinstance(meta, dict) and "units" in meta:
+            data["units"] = meta["units"]
+        elif "units" not in data and hasattr(meta, "units") and getattr(meta, "units", None) is not None:
+            data["units"] = meta.units
         super().__init__(**data)
-        if units is not None:
-            self.units = units
 
-    @property
-    def units(self) -> Units:
-        """Convenience accessor for model engineering units."""
-        return self.metadata.units
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_element_materials(cls, data: Any) -> Any:
+        return migrate_element_materials(data)
 
-    @units.setter
-    def units(self, val: Union[Units, str, Dict[str, Any]]):
-        if isinstance(val, (str, dict)):
-            self.metadata.units = parse_units(val)
-        elif isinstance(val, Units):
-            self.metadata.units = val
-        else:
-            raise TypeError(f"Expected Units, str, or dict, got {type(val).__name__}")
+    # ── Lookups ──────────────────────────────────────────────────────────────
+
+    def get_material(self, material_id: Optional[MaterialId]) -> Optional[Material]:
+        """The material with ID ``material_id``, or None."""
+        return next((m for m in self.materials if m.id == material_id), None)
+
+    def get_section(self, section_id: Optional[SectionId]) -> Optional[Section]:
+        """The section with ID ``section_id``, or None."""
+        return next((s for s in self.sections if s.id == section_id), None)
+
+    def section_of(self, element: Union[Element, ElementId]) -> Optional[Section]:
+        """The section of an element (or element ID); None for an element without one (a spring) or a missing one."""
+        if not hasattr(element, "id"):
+            element = next((e for e in self.elements if e.id == element), None)
+        return self.get_section(getattr(element, "section_id", None))
+
+    def material_of(self, item: Union[Element, Section, ElementId]) -> Optional[Material]:
+        """The material of a section, or of an element through its section; None if there is none."""
+        section = item if hasattr(item, "material_id") else self.section_of(item)
+        return self.get_material(getattr(section, "material_id", None))

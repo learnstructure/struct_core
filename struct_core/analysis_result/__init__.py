@@ -6,7 +6,7 @@ The output engineering result produced by solver packages (`fem2d`, `structdyn`,
 """
 
 from .analysis_result import AnalysisResult
-from .element_result import BeamSectionForce, ElementForceResult, ElementResult
+from .element_result import STANDARD_STATIONS, BeamSectionForce, ElementForceResult, ElementResult
 from .modal_result import ModalResult, ModeShape
 from .node_result import NodeDisplacement, NodeReaction, NodeResult
 from .superposition import envelope_results, superpose_results
@@ -16,6 +16,7 @@ __all__ = [
     "NodeDisplacement",
     "NodeReaction",
     "NodeResult",
+    "STANDARD_STATIONS",
     "BeamSectionForce",
     "ElementForceResult",
     "ElementResult",

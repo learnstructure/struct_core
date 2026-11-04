@@ -19,4 +19,4 @@ class ElementDesignResult(BaseSchemaModel):
     shear: Optional[ShearDesignResult] = Field(default=None, description="Shear design summary")
     code_checks: List[CodeCheckResult] = Field(default_factory=list, description="Detailed code checks performed")
     governing_dcr: float = Field(default=0.0, ge=0.0, description="Governing (maximum) DCR for element")
-    passed: bool = Field(default=True, description="Overall element design pass status")
+    passed: bool = Field(default=False, description="Overall element design pass status")

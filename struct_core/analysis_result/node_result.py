@@ -2,7 +2,7 @@
 Node result schemas for displacements, rotations, and reactions.
 """
 
-from typing import Optional
+from typing import Dict, Optional
 from pydantic import Field
 from ..base import BaseSchemaModel, NodeId
 
@@ -38,3 +38,10 @@ class NodeResult(BaseSchemaModel):
     node_id: NodeId = Field(description="Target node ID")
     displacement: NodeDisplacement = Field(default_factory=NodeDisplacement, description="Nodal displacement vector")
     reaction: Optional[NodeReaction] = Field(default=None, description="Nodal reaction force vector (if supported)")
+    combination_reactions: Dict[str, NodeReaction] = Field(
+        default_factory=dict,
+        description=(
+            "Support reactions of every enveloped load combination, keyed by combination ID. Set by "
+            "envelope_results so foundation design can check the concurrent forces and moments of each combination."
+        ),
+    )

@@ -2,9 +2,13 @@
 Element result schemas for internal forces, moments, stresses, and strains.
 """
 
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 from pydantic import AliasChoices, Field
 from ..base import BaseSchemaModel, ElementId
+
+# Normalized stations (0 = start node, 1 = end node) at which solvers report member internal forces.
+# A shared grid lets results of different load cases and analysis types be superposed station by station.
+STANDARD_STATIONS: Tuple[float, ...] = tuple(i / 10.0 for i in range(11))
 
 
 class BeamSectionForce(BaseSchemaModel):
@@ -54,6 +58,13 @@ class ElementResult(BaseSchemaModel):
     """
     element_id: ElementId = Field(description="Target element ID")
     forces: List[BeamSectionForce] = Field(default_factory=list, description="Section force stations")
+    combination_forces: Dict[str, List[BeamSectionForce]] = Field(
+        default_factory=dict,
+        description=(
+            "Station forces of every enveloped load combination, keyed by combination ID. Set by "
+            "envelope_results so design can check the concurrent forces of each combination."
+        ),
+    )
     max_axial: Optional[float] = Field(default=None, description="Maximum axial force")
     max_moment: Optional[float] = Field(default=None, description="Maximum bending moment")
     max_shear: Optional[float] = Field(default=None, description="Maximum shear force")

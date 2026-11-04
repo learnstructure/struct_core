@@ -1,11 +1,11 @@
 {
   "metadata": {
-    "schema_version": "1.0.0",
+    "schema_version": "2.0.0",
     "title": "2D Portal Frame Example",
     "project_name": "Industrial Warehouse",
     "author": "Structural Engineer AI",
     "description": null,
-    "created_at": "2026-08-07T08:05:09.826389+00:00",
+    "created_at": "2026-10-28T22:27:56.385469+00:00",
     "units": {
       "length": "m",
       "force": "kN",
@@ -15,6 +15,21 @@
     }
   },
   "model": {
+    "metadata": {
+      "schema_version": "2.0.0",
+      "title": null,
+      "project_name": null,
+      "author": null,
+      "description": null,
+      "created_at": "2026-10-28T22:27:56.385469+00:00",
+      "units": {
+        "length": "m",
+        "force": "kN",
+        "time": "s",
+        "mass": "kg",
+        "temperature": "C"
+      }
+    },
     "nodes": [
       {
         "id": 1,
@@ -56,7 +71,6 @@
         "end_node": 2,
         "name": null,
         "type": "beam",
-        "material_id": "StructuralSteel",
         "section_id": "ColSec",
         "release_i": [
           false,
@@ -68,7 +82,9 @@
           false,
           false
         ],
-        "is_nonlinear": false
+        "is_nonlinear": false,
+        "include_shear_deformation": false,
+        "roll_angle": 0.0
       },
       {
         "id": 2,
@@ -76,7 +92,6 @@
         "end_node": 3,
         "name": null,
         "type": "beam",
-        "material_id": "StructuralSteel",
         "section_id": "BeamSec",
         "release_i": [
           false,
@@ -88,7 +103,9 @@
           false,
           false
         ],
-        "is_nonlinear": false
+        "is_nonlinear": false,
+        "include_shear_deformation": false,
+        "roll_angle": 0.0
       },
       {
         "id": 3,
@@ -96,7 +113,6 @@
         "end_node": 4,
         "name": null,
         "type": "beam",
-        "material_id": "StructuralSteel",
         "section_id": "ColSec",
         "release_i": [
           false,
@@ -108,13 +124,16 @@
           false,
           false
         ],
-        "is_nonlinear": false
+        "is_nonlinear": false,
+        "include_shear_deformation": false,
+        "roll_angle": 0.0
       }
     ],
     "materials": [
       {
         "id": "StructuralSteel",
         "name": null,
+        "unit_weight": null,
         "type": "elastic",
         "E": 200000000000.0,
         "nu": 0.3,
@@ -125,6 +144,10 @@
       {
         "id": "ColSec",
         "name": null,
+        "material_id": "StructuralSteel",
+        "rebar_material_id": null,
+        "transverse_rebar_material_id": null,
+        "cover": null,
         "type": "rectangular",
         "b": 0.3,
         "h": 0.3
@@ -132,6 +155,10 @@
       {
         "id": "BeamSec",
         "name": null,
+        "material_id": "StructuralSteel",
+        "rebar_material_id": null,
+        "transverse_rebar_material_id": null,
+        "cover": null,
         "type": "rectangular",
         "b": 0.25,
         "h": 0.45
@@ -142,9 +169,15 @@
         "node_id": 1,
         "ux": true,
         "uy": true,
+        "uz": false,
+        "rx": false,
+        "ry": false,
         "rz": true,
         "kx": 0.0,
         "ky": 0.0,
+        "kz": 0.0,
+        "krx": 0.0,
+        "kry": 0.0,
         "krz": 0.0,
         "name": "Left Support"
       },
@@ -152,9 +185,15 @@
         "node_id": 4,
         "ux": true,
         "uy": true,
+        "uz": false,
+        "rx": false,
+        "ry": false,
         "rz": true,
         "kx": 0.0,
         "ky": 0.0,
+        "kz": 0.0,
+        "krx": 0.0,
+        "kry": 0.0,
         "krz": 0.0,
         "name": "Right Support"
       }
@@ -168,6 +207,9 @@
             "node_id": 2,
             "fx": 20000.0,
             "fy": 0.0,
+            "fz": 0.0,
+            "mx": 0.0,
+            "my": 0.0,
             "mz": 0.0
           }
         ],
@@ -176,14 +218,25 @@
             "element_id": 2,
             "wx": 0.0,
             "wy": -15000.0,
-            "w1": null,
-            "w2": null,
-            "is_local": false
+            "wz": 0.0,
+            "w1": 0.0,
+            "w2": 0.0,
+            "w3": 0.0,
+            "w_start": null,
+            "w_end": null,
+            "is_local": false,
+            "is_self_weight": false
           }
-        ]
+        ],
+        "area_loads": [],
+        "include_self_weight": false,
+        "auto_load": null,
+        "seismic_params": null
       }
     ],
     "load_combinations": [],
+    "area_loads": [],
+    "story_elevations": [],
     "ground_motions": [],
     "analysis_cases": [
       {
@@ -193,9 +246,13 @@
         "load_case_id": "GravityAndWind",
         "load_combination_id": null
       }
-    ]
+    ],
+    "mass_source": null,
+    "mass_sources": []
   },
   "analysis_results": {},
   "design_results": {},
-  "detailing_results": {}
+  "detailing_results": {},
+  "active_analysis_case": null,
+  "seismic_basis": null
 }

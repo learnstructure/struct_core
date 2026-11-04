@@ -55,6 +55,22 @@ class TimeHistoryAnalysis(BaseAnalysisCase):
     damping_ratio: float = Field(default=0.05, ge=0.0, le=1.0, description="Viscous damping ratio (e.g., 0.05 for 5%)")
 
 
+class ResponseSpectrumAnalysis(BaseAnalysisCase):
+    """
+    Dynamic response spectrum analysis configuration.
+    """
+    type: Literal["response_spectrum"] = "response_spectrum"
+    direction: str = Field(default="X", description="Excitation direction ('X', 'Y', or 'Z')")
+    combination: str = Field(default="CQC", description="Modal combination rule ('CQC', 'SRSS', 'ABS')")
+    damping_ratio: float = Field(default=0.05, ge=0.0, le=1.0, description="Modal damping ratio")
+    scale_factor: Optional[float] = Field(default=None, gt=0.0, description="Acceleration scale factor")
+    function_name: Optional[str] = Field(default=None, description="Response spectrum function name")
+    sds: Optional[float] = Field(default=None, description="ASCE 7 short-period spectral acceleration SDS (g)")
+    sd1: Optional[float] = Field(default=None, description="ASCE 7 1-second spectral acceleration SD1 (g)")
+    tl: Optional[float] = Field(default=None, description="Long-period transition period TL (s)")
+    site_class: Optional[str] = Field(default=None, description="Site class (A, B, C, D, E, F)")
+
+
 # Discriminated union for polymorphic analysis case deserialization
 AnalysisCase = Annotated[
     Union[
@@ -62,6 +78,7 @@ AnalysisCase = Annotated[
         NonlinearStaticAnalysis,
         ModalAnalysis,
         TimeHistoryAnalysis,
+        ResponseSpectrumAnalysis,
     ],
     Field(discriminator="type")
 ]

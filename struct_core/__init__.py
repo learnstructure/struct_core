@@ -31,7 +31,9 @@ from .base import (
     SectionId,
 )
 from .design_result import (
+    AppliedDefault,
     CodeCheckResult,
+    DesignInputs,
     DesignResult,
     ElementDesignResult,
     FlexureDesignResult,
@@ -51,6 +53,7 @@ from .detailing_result import (
     RebarLayer,
     StirrupLayout,
 )
+from .design_basis import SeismicDesignBasis
 from .metadata import Metadata, Units
 from .units import (
     PRESETS,
@@ -74,9 +77,11 @@ from .structural_model import (
     BeamElement,
     BilinearMaterial,
     CircularSection,
+    ConcreteMaterial,
     DistributedLoad,
     ElasticMaterial,
     Element,
+    ElementPointLoad,
     GeneralSection,
     GroundMotion,
     LinearStaticAnalysis,
@@ -90,15 +95,26 @@ from .structural_model import (
     Node,
     NonlinearStaticAnalysis,
     PointLoad,
+    RebarMaterial,
     RectangularSection,
+    ResponseSpectrumAnalysis,
     Section,
+    SolidSection,
     SpringElement,
     StructuralModel,
     StructuralValidationError,
     Support,
     TimeHistoryAnalysis,
     TrussElement,
+    VALID_LOAD_TYPES,
+    classify_load_case,
     validate_structural_model,
+    FrameStory,
+    classify_frame_members,
+    frame_levels,
+    frame_stories,
+    node_elevation,
+    vertical_axis,
 )
 from .structural_model.registry import ElementRegistry
 
@@ -107,7 +123,7 @@ analysis_results = analysis_result
 design_results = design_result
 detailing_results = detailing_result
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     # Subpackages
@@ -146,9 +162,12 @@ __all__ = [
     "ElementRegistry",
     "BaseMaterial",
     "ElasticMaterial",
+    "ConcreteMaterial",
+    "RebarMaterial",
     "BilinearMaterial",
     "Material",
     "BaseSection",
+    "SolidSection",
     "RectangularSection",
     "CircularSection",
     "GeneralSection",
@@ -157,8 +176,12 @@ __all__ = [
     "AreaLoad",
     "PointLoad",
     "DistributedLoad",
+    "ElementPointLoad",
+    "ElementPointLoad",
     "GroundMotion",
     "LoadCase",
+    "VALID_LOAD_TYPES",
+    "classify_load_case",
     "LoadCaseFactor",
     "LoadCombination",
     "MassSource",
@@ -168,10 +191,18 @@ __all__ = [
     "NonlinearStaticAnalysis",
     "ModalAnalysis",
     "TimeHistoryAnalysis",
+    "ResponseSpectrumAnalysis",
     "AnalysisCase",
     "StructuralModel",
     "validate_structural_model",
     "StructuralValidationError",
+    # Topology
+    "FrameStory",
+    "classify_frame_members",
+    "frame_levels",
+    "frame_stories",
+    "node_elevation",
+    "vertical_axis",
     # Analysis Results
     "NodeDisplacement",
     "NodeReaction",
@@ -191,6 +222,8 @@ __all__ = [
     "MaterialDesignResult",
     "ElementDesignResult",
     "DesignResult",
+    "DesignInputs",
+    "AppliedDefault",
     # Detailing Results
     "Bar",
     "RebarLayer",
@@ -205,6 +238,7 @@ __all__ = [
     "DetailingResult",
     # Project & Utilities
     "Project",
+    "SeismicDesignBasis",
     "to_dict",
     "from_dict",
     "to_json",

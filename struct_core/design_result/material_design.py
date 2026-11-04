@@ -13,7 +13,7 @@ class FlexureDesignResult(BaseSchemaModel):
     """
     required_steel_area: float = Field(ge=0.0, description="Required tension reinforcement area As (sq. in or sq. mm)")
     provided_steel_area: float = Field(ge=0.0, description="Provided tension reinforcement area As (sq. in or sq. mm)")
-    phi_mn: float = Field(gt=0.0, description="Factored nominal flexural strength phi*Mn")
+    phi_mn: float = Field(ge=0.0, description="Factored nominal flexural strength phi*Mn")
     mu: float = Field(ge=0.0, description="Factored design bending moment Mu")
     dcr: float = Field(ge=0.0, description="Demand/Capacity Ratio for flexure")
     neutral_axis_depth: float = Field(default=0.0, ge=0.0, description="Neutral axis depth c")
@@ -30,7 +30,7 @@ class ShearDesignResult(BaseSchemaModel):
     provided_shear_steel: float = Field(ge=0.0, description="Provided transverse steel area per unit spacing Av/s")
     phi_vc: float = Field(default=0.0, ge=0.0, description="Factored concrete shear strength phi*Vc")
     phi_vs: float = Field(default=0.0, ge=0.0, description="Factored steel shear strength phi*Vs")
-    phi_vn: float = Field(gt=0.0, description="Total factored nominal shear strength phi*Vn")
+    phi_vn: float = Field(ge=0.0, description="Total factored nominal shear strength phi*Vn")
     vu: float = Field(ge=0.0, description="Factored design shear force Vu")
     dcr: float = Field(ge=0.0, description="Demand/Capacity Ratio for shear")
     passed: bool = Field(description="Shear strength adequacy status")
