@@ -776,7 +776,9 @@ def convert_project_units(
             _convert_materials(inputs.materials, source_units, target_units, converted)
             _convert_sections(inputs.sections, source_units, target_units, converted)
             _scale(inputs, ("allowable_bearing_pressure",), conversion_factor(source_units, target_units, "pressure"))
-            _scale(inputs, ("footing_cover",), f_len)
+            _scale(inputs, ("footing_cover", "soil_depth"), f_len)
+            _scale(inputs, ("soil_unit_weight",),
+                   conversion_factor(source_units, target_units, "weight_density"))
 
         for edr in getattr(d_res, "element_results", {}).values():
             if getattr(edr, "flexure", None) is not None:

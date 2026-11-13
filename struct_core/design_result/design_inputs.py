@@ -35,6 +35,12 @@ class DesignInputs(BaseSchemaModel):
     footing_cover: Optional[float] = Field(
         default=None, gt=0.0, description="Clear cover of footing reinforcement (model length unit)"
     )
+    soil_depth: Optional[float] = Field(
+        default=None, ge=0.0, description="Depth of soil above the top of the footings (model length unit)"
+    )
+    soil_unit_weight: Optional[float] = Field(
+        default=None, ge=0.0, description="Unit weight of the soil above the footings (model weight density unit)"
+    )
     defaults_applied: List[AppliedDefault] = Field(
         default_factory=list, description="Defaults used where the user gave no value"
     )

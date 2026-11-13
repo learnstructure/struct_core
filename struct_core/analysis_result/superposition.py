@@ -233,6 +233,7 @@ def superpose_results(
         analysis_case_id=output_case_id,
         result_type="combination",
         carries_factored_actions=True,
+        combination_factors={str(output_case_id): dict(active_factors)},
         node_results=node_results,
         element_results=element_results,
     )
@@ -354,6 +355,7 @@ def envelope_results(
         result_type="envelope",
         carries_factored_actions=any(getattr(r, "carries_factored_actions", False) for r in valid_results),
         governing_combinations=[r.analysis_case_id for r in valid_results],
+        combination_factors={k: dict(v) for r in valid_results for k, v in (r.combination_factors or {}).items()},
         node_results=node_results,
         element_results=element_results,
     )

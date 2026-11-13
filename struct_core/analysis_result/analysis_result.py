@@ -27,6 +27,11 @@ class AnalysisResult(BaseSchemaModel):
     governing_combinations: List[str] = Field(
         default_factory=list, description="IDs of combinations enveloped if result_type=='envelope'"
     )
+    combination_factors: Dict[str, Dict[str, float]] = Field(
+        default_factory=dict,
+        description="Load factors of each combination in the result, {combination id: {load case id: factor}}: "
+                    "the result's own combination, or every combination of an envelope",
+    )
     node_results: Dict[NodeId, NodeResult] = Field(default_factory=dict, description="Nodal output results keyed by NodeId")
     element_results: Dict[ElementId, ElementResult] = Field(default_factory=dict, description="Element output results keyed by ElementId")
     modal_result: Optional[ModalResult] = Field(default=None, description="Modal eigenvalue analysis results (if applicable)")
