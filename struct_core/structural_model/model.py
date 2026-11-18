@@ -13,6 +13,7 @@ from .materials import Material
 from .migration import migrate_element_materials
 from .nodes import Node
 from .sections import Section
+from .shells import ShellElement, ShellSection
 from .supports import Support
 
 
@@ -30,6 +31,10 @@ class StructuralModel(BaseSchemaModel):
     elements: List[Element] = Field(default_factory=list, description="List of structural elements")
     materials: List[Material] = Field(default_factory=list, description="List of material definitions")
     sections: List[Section] = Field(default_factory=list, description="List of cross-section definitions")
+    shell_elements: List[ShellElement] = Field(
+        default_factory=list, description="Shell (area) elements: slabs and walls, 3 or 4 nodes each"
+    )
+    shell_sections: List[ShellSection] = Field(default_factory=list, description="Sections of the shell elements")
     supports: List[Support] = Field(default_factory=list, description="List of support boundary conditions")
     load_cases: List[LoadCase] = Field(default_factory=list, description="List of load cases")
     load_combinations: List[LoadCombination] = Field(default_factory=list, description="List of load combinations")
@@ -70,13 +75,27 @@ class StructuralModel(BaseSchemaModel):
         """The section with ID ``section_id``, or None."""
         return next((s for s in self.sections if s.id == section_id), None)
 
-    def section_of(self, element: Union[Element, ElementId]) -> Optional[Section]:
-        """The section of an element (or element ID); None for an element without one (a spring) or a missing one."""
+    def get_shell_section(self, section_id: Optional[SectionId]) -> Optional[ShellSection]:
+        """The shell section with ID ``section_id``, or None."""
+        return next((s for s in self.shell_sections if s.id == section_id), None)
+
+    def get_shell_element(self, element_id: Optional[ElementId]) -> Optional[ShellElement]:
+        """The shell element with ID ``element_id``, or None."""
+        return next((e for e in self.shell_elements if e.id == element_id), None)
+
+    def section_of(
+        self, element: Union[Element, ShellElement, ElementId]
+    ) -> Optional[Union[Section, ShellSection]]:
+        """The section of an element or shell element (or of an element ID); None for an element without one (a
+        spring) or a missing one. A shell element resolves to a shell section."""
         if not hasattr(element, "id"):
-            element = next((e for e in self.elements if e.id == element), None)
+            element = (next((e for e in self.elements if e.id == element), None)
+                       or self.get_shell_element(element))
+        if isinstance(element, ShellElement):
+            return self.get_shell_section(element.section_id)
         return self.get_section(getattr(element, "section_id", None))
 
-    def material_of(self, item: Union[Element, Section, ElementId]) -> Optional[Material]:
+    def material_of(self, item: Union[Element, ShellElement, Section, ShellSection, ElementId]) -> Optional[Material]:
         """The material of a section, or of an element through its section; None if there is none."""
         section = item if hasattr(item, "material_id") else self.section_of(item)
         return self.get_material(getattr(section, "material_id", None))

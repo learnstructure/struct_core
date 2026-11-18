@@ -6,7 +6,7 @@ Single source of truth for schemas, data structures, and utilities across
 the entire structural engineering ecosystem.
 """
 
-from . import analysis_result, design_result, detailing_result, structural_model
+from . import analysis_result, design_result, detailing_result, geometry, structural_model
 from .analysis_result import (
     AnalysisResult,
     BeamSectionForce,
@@ -15,6 +15,9 @@ from .analysis_result import (
     ModalResult,
     ModeShape,
     NodeDisplacement,
+    ShellElementResult,
+    ShellForces,
+    ShellNodeForces,
     NodeReaction,
     NodeResult,
     TimeHistoryResult,
@@ -100,6 +103,9 @@ from .structural_model import (
     RectangularSection,
     ResponseSpectrumAnalysis,
     Section,
+    ShellElement,
+    ShellLoad,
+    ShellSection,
     SolidSection,
     SpringElement,
     StructuralModel,
@@ -129,6 +135,7 @@ __version__ = "0.3.0"
 __all__ = [
     # Subpackages
     "structural_model",
+    "geometry",
     "analysis_result",
     "design_result",
     "detailing_result",
@@ -176,6 +183,9 @@ __all__ = [
     "Section",
     "Support",
     "AreaLoad",
+    "ShellElement",
+    "ShellLoad",
+    "ShellSection",
     "PointLoad",
     "DistributedLoad",
     "ElementPointLoad",
@@ -217,6 +227,9 @@ __all__ = [
     "TimeStepResult",
     "TimeHistoryResult",
     "AnalysisResult",
+    "ShellElementResult",
+    "ShellForces",
+    "ShellNodeForces",
     # Design Results
     "CodeCheckResult",
     "FlexureDesignResult",

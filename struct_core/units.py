@@ -625,6 +625,7 @@ def convert_project_units(
     f_stress = conversion_factor(source_units, target_units, "stress")
     f_trans_stiff = conversion_factor(source_units, target_units, "trans_stiffness")
     f_rot_stiff = conversion_factor(source_units, target_units, "rot_stiffness")
+    f_pressure = conversion_factor(source_units, target_units, "pressure")
     converted: set = set()  # ids of material / section objects already converted
 
     model = getattr(target_proj, "model", None)
@@ -654,6 +655,8 @@ def convert_project_units(
 
         # 4. Sections (b, h, d, cover, A, As2, As3, I2, I3, J)
         _convert_sections(getattr(model, "sections", []), source_units, target_units, converted)
+        for ssec in getattr(model, "shell_sections", []):
+            _scale(ssec, ("thickness", "bending_thickness"), f_len)
 
         # 5. Supports (kx, ky, kz, krx, kry, krz) and Spring Elements (kx, ky, kz)
         for supp in getattr(model, "supports", []):
@@ -701,6 +704,10 @@ def convert_project_units(
                     v = getattr(epl, m_attr, None)
                     if v is not None:
                         setattr(epl, m_attr, float(v) * f_moment)
+
+            # Uniform loads on shell elements (force per area)
+            for sl in getattr(lc, "shell_loads", []):
+                sl.pressure = float(sl.pressure) * f_pressure
 
             # Area loads inside case
             for al in getattr(lc, "area_loads", []):
@@ -758,6 +765,24 @@ def convert_project_units(
 
                 _scale(er, ("max_axial", "max_shear"), f_force)
                 _scale(er, ("max_moment",), f_moment)
+
+            # Shell resultants: F and V are force per length, M is moment per length (force)
+            def _scale_shell_forces(sf: Any) -> None:
+                if sf is None or id(sf) in converted:
+                    return
+                converted.add(id(sf))
+                _scale(sf, ("F11", "F22", "F12", "V13", "V23"), f_line_load)
+                _scale(sf, ("M11", "M22", "M12"), f_force)
+
+            for sr in getattr(a_res, "shell_results", {}).values():
+                for sf in list(sr.gauss_points) + list(sr.corners):
+                    _scale_shell_forces(sf)
+                for comb_corners in (sr.combination_corners or {}).values():
+                    for sf in comb_corners:
+                        _scale_shell_forces(sf)
+            for groups in getattr(a_res, "shell_node_results", {}).values():
+                for g in groups:
+                    _scale_shell_forces(g.forces)
 
             # Dynamic time history integration results
             th_res = getattr(a_res, "time_history_result", None)

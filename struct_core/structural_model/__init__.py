@@ -43,6 +43,7 @@ from .loads import (
     MassSource,
     MassSourceFactor,
     PointLoad,
+    ShellLoad,
     VALID_LOAD_TYPES,
     classify_load_case,
 )
@@ -64,6 +65,7 @@ from .sections import (
     Section,
     SolidSection,
 )
+from .shells import ShellElement, ShellSection
 from .registry import ElementRegistry
 from .supports import Support
 from .topology import (
@@ -102,6 +104,7 @@ __all__ = [
     "CircularSection",
     "GeneralSection",
     "Section",
+    "ShellSection",
     # Elements
     "BaseElement",
     "TrussElement",
@@ -109,12 +112,14 @@ __all__ = [
     "STIFFNESS_MODIFIER_KEYS",
     "SpringElement",
     "Element",
+    "ShellElement",
     "ElementRegistry",
     # Supports
     "Support",
     # Loads
     "AreaLoad",
     "PointLoad",
+    "ShellLoad",
     "ElementPointLoad",
     "VALID_LOAD_TYPES",
     "classify_load_case",

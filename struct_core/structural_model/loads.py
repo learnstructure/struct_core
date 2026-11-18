@@ -258,8 +258,8 @@ class ElementPointLoad(BaseSchemaModel):
 
 class AreaLoad(BaseSchemaModel):
     """
-    Uniform surface pressure load applied over a floor area or panel.
-    Can be attributed to bounding elements or floor levels via tributary area distribution.
+    Uniform floor pressure over a panel or floor level, distributed to the frame members that bound it (tributary
+    area). It is not a load on shell elements: a pressure on shell elements is a :class:`ShellLoad`.
     """
     id: Optional[str] = Field(default=None, description="Unique area load identifier")
     story_elevation: Optional[float] = Field(default=None, description="Floor level / elevation (Z or Y)")
@@ -282,6 +282,24 @@ class AreaLoad(BaseSchemaModel):
         raise ValueError(
             f"Invalid area load_type {val!r}. Must be one of: {sorted(VALID_LOAD_TYPES)}"
         )
+
+
+class ShellLoad(BaseSchemaModel):
+    """
+    Uniform load on shell elements, as force per unit area of the element (CSI "uniform load", Analysis Reference
+    Manual §10.14).
+
+    - ``direction="local_3"``: along each element's local axis 3 (normal to the element).
+    - ``direction="x"``, ``"y"``, or ``"z"``: along a global axis, per unit area of the element (not of its
+      projection). The sign of ``pressure`` gives the sense: gravity is ``direction="z"`` with a negative pressure.
+
+    ``is_self_weight`` marks loads generated from the section's material weight (struct_load ``apply_self_weight``),
+    so that they are not counted twice.
+    """
+    element_ids: List[ElementId] = Field(min_length=1, description="Loaded shell element IDs")
+    pressure: float = Field(description="Load per unit area of the element (model force / length^2), signed")
+    direction: Literal["local_3", "x", "y", "z"] = Field(description="Load direction: local axis 3 or a global axis")
+    is_self_weight: bool = Field(default=False, description="Load generated from the self-weight of the elements")
 
 
 class GroundMotion(BaseSchemaModel):
@@ -312,6 +330,7 @@ class LoadCase(BaseSchemaModel):
     element_loads: List[DistributedLoad] = Field(default_factory=list, description="List of distributed element loads")
     element_point_loads: List[ElementPointLoad] = Field(default_factory=list, description="List of concentrated element point loads")
     area_loads: List[AreaLoad] = Field(default_factory=list, description="List of area/surface loads assigned to this case")
+    shell_loads: List[ShellLoad] = Field(default_factory=list, description="Uniform loads on shell elements")
     include_self_weight: bool = Field(default=False, description="Whether self-weight of elements should be automatically calculated")
     auto_load: Optional[str] = Field(default=None, description="Auto lateral load standard (e.g. 'ASCE 7-22')")
     seismic_params: Optional[Dict[str, Any]] = Field(default=None, description="Auto seismic parameters dictionary")

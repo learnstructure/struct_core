@@ -8,6 +8,7 @@ The output engineering result produced by solver packages (`fem2d`, `structdyn`,
 from .analysis_result import AnalysisResult
 from .element_result import STANDARD_STATIONS, BeamSectionForce, ElementForceResult, ElementResult
 from .modal_result import ModalResult, ModeShape
+from .shell_result import ShellElementResult, ShellForces, ShellNodeForces, shell_forces_from_array
 from .node_result import NodeDisplacement, NodeReaction, NodeResult
 from .superposition import envelope_results, superpose_results
 from .time_history_result import TimeHistoryResult, TimeStepResult
@@ -25,6 +26,10 @@ __all__ = [
     "TimeStepResult",
     "TimeHistoryResult",
     "AnalysisResult",
+    "ShellForces",
+    "ShellElementResult",
+    "ShellNodeForces",
+    "shell_forces_from_array",
     "superpose_results",
     "envelope_results",
 ]

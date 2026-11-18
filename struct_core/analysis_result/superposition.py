@@ -19,6 +19,10 @@ from ..base import ElementId, NodeId
 from .analysis_result import AnalysisResult
 from .element_result import BeamSectionForce, ElementResult
 from .node_result import NodeDisplacement, NodeReaction, NodeResult
+from .shell_result import ShellElementResult, ShellForces, ShellNodeForces, shell_forces_from_array
+
+# Membrane direct forces F11 and F22 are combined like the axial force of a frame (indices in SHELL_FORCE_KEYS)
+_SHELL_AXIAL_INDICES = (0, 1)
 
 
 def _combine_components(contributions: List[tuple], axial_indices: tuple = (0,)) -> List[float]:
@@ -60,6 +64,78 @@ def _combine_components(contributions: List[tuple], axial_indices: tuple = (0,))
                 fac_sign = 1.0 if s != 0.0 else (1.0 if fac >= 0.0 else -1.0)
                 result[k] += fac_sign * direction * (abs(fac) * val)
     return result
+
+
+def _superpose_shell_points(terms: List[tuple], what: str) -> List[ShellForces]:
+    """Combine lists of ShellForces point by point; ``terms`` holds ``(factor, points, is_spectral)``."""
+    n_pts = len(terms[0][1])
+    if any(len(points) != n_pts for _, points, _ in terms):
+        raise ValueError(f"Cannot superpose: {what} has a different number of result points in the combined cases")
+    out = []
+    for k in range(n_pts):
+        values = _combine_components([(fac, points[k].as_list(), spec) for fac, points, spec in terms],
+                                     axial_indices=_SHELL_AXIAL_INDICES)
+        out.append(shell_forces_from_array(values))
+    return out
+
+
+def _superpose_shells(case_results: Dict[str, AnalysisResult], active_factors: Dict[str, float], spectral: set):
+    """Superpose the shell element and shell node results of the active cases."""
+    shell_ids = set()
+    node_ids = set()
+    for cid in active_factors:
+        shell_ids.update(case_results[cid].shell_results.keys())
+        node_ids.update(case_results[cid].shell_node_results.keys())
+
+    shell_results: Dict[ElementId, ShellElementResult] = {}
+    for eid in shell_ids:
+        entries = []
+        for cid, fac in active_factors.items():
+            sr = case_results[cid].shell_results.get(eid)
+            if sr is None:
+                raise ValueError(f"Cannot superpose: shell element '{eid}' missing in case '{cid}'")
+            entries.append((fac, sr, cid in spectral))
+        shell_results[eid] = ShellElementResult(
+            element_id=eid,
+            gauss_points=_superpose_shell_points([(f, sr.gauss_points, sp) for f, sr, sp in entries],
+                                                 f"shell element '{eid}' (Gauss points)"),
+            corners=_superpose_shell_points([(f, sr.corners, sp) for f, sr, sp in entries],
+                                            f"shell element '{eid}' (corners)"),
+        )
+
+    shell_node_results: Dict[NodeId, List[ShellNodeForces]] = {}
+    for nid in node_ids:
+        groups_per_case = []
+        for cid, fac in active_factors.items():
+            groups = case_results[cid].shell_node_results.get(nid)
+            if groups is None:
+                raise ValueError(f"Cannot superpose: shell node results of node '{nid}' missing in case '{cid}'")
+            groups_per_case.append((fac, groups, cid in spectral))
+        ref = groups_per_case[0][1]
+        for _, groups, _ in groups_per_case:
+            if [g.element_ids for g in groups] != [g.element_ids for g in ref]:
+                raise ValueError(f"Cannot superpose: shell node results of node '{nid}' are grouped differently in "
+                                 f"the combined cases")
+        combined = []
+        for gi, g_ref in enumerate(ref):
+            (forces,) = _superpose_shell_points(
+                [(fac, [groups[gi].forces], spec) for fac, groups, spec in groups_per_case],
+                f"shell node '{nid}'")
+            combined.append(g_ref.model_copy(update={"forces": forces}))
+        shell_node_results[nid] = combined
+    return shell_results, shell_node_results
+
+
+def _envelope_shell_points(point_lists: List[List[ShellForces]]) -> List[ShellForces]:
+    """Component-wise value of largest magnitude over several lists of ShellForces (not concurrent)."""
+    n_pts = len(point_lists[0])
+    if any(len(p) != n_pts for p in point_lists):
+        raise ValueError("Cannot envelope shell results with different numbers of result points")
+    out = []
+    for k in range(n_pts):
+        values = [p[k].as_list() for p in point_lists]
+        out.append(shell_forces_from_array([max((v[c] for v in values), key=abs) for c in range(8)]))
+    return out
 
 
 def superpose_results(
@@ -229,6 +305,8 @@ def superpose_results(
             max_shear=gov_sh,
         )
 
+    shell_results, shell_node_results = _superpose_shells(case_results, active_factors, spectral)
+
     return AnalysisResult(
         analysis_case_id=output_case_id,
         result_type="combination",
@@ -236,6 +314,8 @@ def superpose_results(
         combination_factors={str(output_case_id): dict(active_factors)},
         node_results=node_results,
         element_results=element_results,
+        shell_results=shell_results,
+        shell_node_results=shell_node_results,
     )
 
 
@@ -260,6 +340,11 @@ def envelope_results(
             return dict(er.combination_forces)
         return {str(r.analysis_case_id): list(er.forces)} if er.forces else {}
 
+    def _combination_corners(r: AnalysisResult, sr: ShellElementResult) -> Dict[str, List[ShellForces]]:
+        if sr.combination_corners:
+            return dict(sr.combination_corners)
+        return {str(r.analysis_case_id): list(sr.corners)} if sr.corners else {}
+
     def _combination_reactions(r: AnalysisResult, nr: NodeResult) -> Dict[str, NodeReaction]:
         if nr.combination_reactions:
             return dict(nr.combination_reactions)
@@ -272,6 +357,8 @@ def envelope_results(
             nr.combination_reactions = _combination_reactions(valid_results[0], nr)
         for er in res_copy.element_results.values():
             er.combination_forces = _combination_forces(valid_results[0], er)
+        for sr in res_copy.shell_results.values():
+            sr.combination_corners = _combination_corners(valid_results[0], sr)
         return res_copy
 
     # 1. Envelope Nodes: pick the result that has the maximum displacement resultant
@@ -350,6 +437,24 @@ def envelope_results(
             max_shear=max_sh,
         )
 
+    # 3. Envelope shell elements: largest magnitude of each component; concurrent corner values per combination
+    shell_results: Dict[ElementId, ShellElementResult] = {}
+    shell_ids = set()
+    for r in valid_results:
+        shell_ids.update(r.shell_results.keys())
+    for eid in shell_ids:
+        present = [r for r in valid_results if eid in r.shell_results]
+        all_sr = [r.shell_results[eid] for r in present]
+        combination_corners: Dict[str, List[ShellForces]] = {}
+        for r, sr in zip(present, all_sr):
+            combination_corners.update(_combination_corners(r, sr))
+        shell_results[eid] = ShellElementResult(
+            element_id=eid,
+            gauss_points=_envelope_shell_points([sr.gauss_points for sr in all_sr]),
+            corners=_envelope_shell_points([sr.corners for sr in all_sr]),
+            combination_corners=combination_corners,
+        )
+
     return AnalysisResult(
         analysis_case_id=output_case_id,
         result_type="envelope",
@@ -358,4 +463,5 @@ def envelope_results(
         combination_factors={k: dict(v) for r in valid_results for k, v in (r.combination_factors or {}).items()},
         node_results=node_results,
         element_results=element_results,
+        shell_results=shell_results,
     )

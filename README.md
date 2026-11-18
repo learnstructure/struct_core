@@ -44,11 +44,11 @@ Every tool speaks one neutral engineering language. Solvers and design packages 
 ## Features
 
 - **Four-Subpackage Architecture** — Clean separation of concerns across the engineering lifecycle: input model, analysis outputs, design outputs, and detailing outputs.
-- **Declarative Domain Models** — Pure data schemas with no solver logic, no matrix math, and no design equations.
+- **Declarative Domain Models** — Data schemas with no solver logic and no design equations. The only computation is shared geometry (`struct_core.geometry`: shell local axes and shape checks), so that every package uses the same axes.
 - **Pydantic v2 Validation** — Strong type checking, referential integrity (element → node/section, section → material, reinforcing-bar references → rebar materials), duplicate ID detection, and zero-length element checks.
 - **JSON Serialization** — Full round-trip JSON and Python dict import/export with `to_json()`, `from_json()`, `save_json()`, and `load_json()`.
 - **Sections Own Their Materials** — A section is the complete cross-section definition (geometry, material, and for reinforced concrete its bar materials and clear cover), as in ETABS / SAP2000. Elements reference only a section; `StructuralModel.material_of(element)` resolves the material.
-- **Polymorphic Type System** — Discriminated unions for materials (`elastic`, `concrete`, `rebar`, `bilinear`), sections (`rectangular`, `circular`, `general`), elements (`beam`, `truss`, `spring`), and analysis cases (`linear_static`, `nonlinear_static`, `modal`, `time_history`).
+- **Polymorphic Type System** — Discriminated unions for materials (`elastic`, `concrete`, `rebar`, `bilinear`), sections (`rectangular`, `circular`, `general`), elements (`beam`, `truss`, `spring`; shell elements in their own list), and analysis cases (`linear_static`, `nonlinear_static`, `modal`, `time_history`).
 - **Full Project Lifecycle Container** — `Project` wraps `Metadata`, `StructuralModel`, `AnalysisResult`, `DesignResult`, and `DetailingResult` in one serializable object.
 - **Lightweight Plugin Registry** — Register custom element types via `@ElementRegistry.register("custom_type")` without modifying core source code.
 - **3D Ready** — Nodes carry `(x, y, z)` coordinates with `z=0.0` default, ensuring a clean upgrade path to full 3D support.
@@ -69,6 +69,7 @@ pip install -e .
 
 - Python 3.9+
 - pydantic >= 2.0.0
+- numpy >= 1.20 (`struct_core.geometry`)
 
 ---
 
@@ -82,8 +83,9 @@ struct_core/
 │   ├── materials.py       #   ElasticMaterial, ConcreteMaterial, RebarMaterial, BilinearMaterial
 │   ├── sections.py        #   RectangularSection, CircularSection (SolidSection), GeneralSection
 │   ├── elements.py        #   TrussElement, BeamElement, SpringElement
+│   ├── shells.py          #   ShellSection, ShellElement (slabs and walls)
 │   ├── supports.py        #   Support
-│   ├── loads.py           #   PointLoad, DistributedLoad, AreaLoad, LoadCase, LoadCombination
+│   ├── loads.py           #   PointLoad, DistributedLoad, AreaLoad, ShellLoad, LoadCase, LoadCombination
 │   ├── mass_source.py     #   MassSource, MassSourceFactor
 │   ├── analysis.py        #   LinearStaticAnalysis, ModalAnalysis, TimeHistoryAnalysis
 │   ├── model.py           #   StructuralModel (get_material, get_section, section_of, material_of)
@@ -93,6 +95,7 @@ struct_core/
 ├── analysis_result/       # How the structure responds (produced by fem2d, structdyn)
 │   ├── node_result.py     #   NodeDisplacement, NodeReaction, NodeResult
 │   ├── element_result.py  #   BeamSectionForce, ElementResult
+│   ├── shell_result.py    #   ShellForces, ShellElementResult, ShellNodeForces
 │   ├── modal_result.py    #   ModeShape, ModalResult
 │   ├── time_history_result.py  # TimeHistoryResult
 │   └── analysis_result.py #   AnalysisResult
@@ -108,6 +111,7 @@ struct_core/
 │   ├── schedule.py        #   BarScheduleItem, BarSchedule
 │   ├── element_detailing.py  # ElementDetailingResult
 │   └── detailing_result.py   # DetailingResult
+├── geometry/              # Shared geometry: shell local axes, shape checks, resultant rotation and averaging
 ├── project.py             # Project (top-level lifecycle container)
 ├── metadata.py            # Metadata
 ├── serialization.py       # to_json, from_json, save_json, load_json
@@ -286,8 +290,10 @@ project.detailing_results["ACI318"] = DetailingResult(
 | `ConcreteMaterial`, `RebarMaterial` | Reinforced-concrete materials: elastic for analysis (subclasses of `ElasticMaterial`) with their design strengths, concrete `fc` and rebar `fy` / `fu`, in the model stress unit |
 | `RectangularSection`, `CircularSection`, `GeneralSection` | Cross-section definitions, each with its `material_id` (including effective shear areas `As2`, `As3` for Timoshenko beam analysis). Rectangular and circular sections may be reinforced concrete: `rebar_material_id` (longitudinal, fy), `transverse_rebar_material_id` (stirrups and ties, fyt) and clear `cover` |
 | `TrussElement`, `BeamElement`, `SpringElement` | Structural element types (including end releases and `include_shear_deformation` flag); truss and beam elements reference a `section_id` |
+| `ShellSection`, `ShellElement` | Slabs and walls: 3- or 4-node shell elements in `StructuralModel.shell_elements`, with sections in `StructuralModel.shell_sections` (membrane thickness, optional bending thickness, `behavior` shell/membrane/plate, `plate_theory` thick/thin). Local axes follow SAP2000 (`axis_angle`, `reference_vector`); see `struct_core.geometry` below |
 | `Support` | Boundary condition (pinned, fixed, roller, or custom spring stiffness) |
-| `PointLoad`, `DistributedLoad`, `AreaLoad`, `GroundMotion` | Applied loads |
+| `PointLoad`, `DistributedLoad`, `AreaLoad`, `GroundMotion` | Applied loads. `AreaLoad` is a floor pressure distributed to frame members |
+| `ShellLoad` | Uniform load per unit area on shell elements (`LoadCase.shell_loads`), along local axis 3 or a global axis |
 | `LoadCase`, `LoadCombination` | Load grouping and factored combinations |
 | `MassSource`, `MassSourceFactor` | Dynamic mass source specification (multipliers on dead/live load cases) |
 | `LinearStaticAnalysis`, `ModalAnalysis`, `TimeHistoryAnalysis` | Analysis case definitions |
@@ -305,7 +311,23 @@ project.detailing_results["ACI318"] = DetailingResult(
 | `BeamSectionForce`, `ElementResult` | Internal forces along beam elements (axial force tension positive). `envelope_results` keeps every enveloped combination's station forces in `ElementResult.combination_forces`, so design can check concurrent forces |
 | `ModeShape`, `ModalResult` | Natural periods and mode shapes |
 | `TimeHistoryResult` | Time-series dynamic response |
+| `ShellForces`, `ShellElementResult`, `ShellNodeForces` | Shell stress resultants per unit length (F11, F22, F12, M11, M22, M12, V13, V23, with the names and signs of the CSI Analysis Reference Manual §10.18) at Gauss points, element corners, and averaged at nodes per plane (`AnalysisResult.shell_results`, `shell_node_results`) |
 | `AnalysisResult` | Container keyed by analysis case ID. `stiffness_basis` (`gross` or `cracked`) records the member stiffness used; `code_checks` holds frame-level analysis checks (slenderness, story drift, stability) |
+
+### `geometry` — Shared Geometry of Shell Elements
+
+The local axes of shell elements are computed only here, so that solvers, SAP2000/ETABS exchange, drawing, and design
+agree. Every function works on N elements at once (coordinates of shape (N, k, 3), k = 3 or 4).
+
+| Function | Description |
+|:---|:---|
+| `shell_local_axes` | Local axes 1-2-3 as an (N, 3, 3) array, SAP2000 convention (CSI Analysis Reference Manual §10.6–10.7): axis 3 normal (right-hand rule on j1-j2-j3; quadrilateral plane through the midpoints of opposite sides), axis 2 up or along +Y for horizontal elements, then `axis_angle` about axis 3 or a `reference_vector` |
+| `check_shell_shapes`, `shell_shape_measures` | Shape checks of CSI §10.2.1: warping (warn above 30°, refuse above 45°), inside angle (refuse at 180° or more; quadrilaterals warn outside 45°–135°), aspect ratio (warn above 4, refuse above 10) |
+| `check_normal_consistency` | Flags neighbours with flipped normals (M11 and M22 change sign) and normals away from a required direction (+Z for a floor) |
+| `rotate_shell_resultants` | Resultants in any in-plane direction (for example reinforcement along global X), also with a flipped normal |
+| `average_shell_node_forces` | Averages corner values at nodes by plane, never across a slab-wall junction |
+| `shell_corner_weights` | Shares of an element's mass or load at its corners (CSI §10.11) |
+| `model_shell_axes`, `check_model_shells` | The same for the shell elements of a `StructuralModel` |
 
 ### `design_result` — Design Outputs
 

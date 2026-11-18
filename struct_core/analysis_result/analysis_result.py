@@ -9,6 +9,7 @@ from ..design_result.code_check import CodeCheckResult
 from .element_result import ElementResult
 from .modal_result import ModalResult
 from .node_result import NodeResult
+from .shell_result import ShellElementResult, ShellNodeForces
 from .time_history_result import TimeHistoryResult
 
 
@@ -34,6 +35,13 @@ class AnalysisResult(BaseSchemaModel):
     )
     node_results: Dict[NodeId, NodeResult] = Field(default_factory=dict, description="Nodal output results keyed by NodeId")
     element_results: Dict[ElementId, ElementResult] = Field(default_factory=dict, description="Element output results keyed by ElementId")
+    shell_results: Dict[ElementId, ShellElementResult] = Field(
+        default_factory=dict, description="Shell element stress resultants keyed by shell element ID"
+    )
+    shell_node_results: Dict[NodeId, List[ShellNodeForces]] = Field(
+        default_factory=dict,
+        description="Shell resultants averaged at nodes, one record per plane group at the node, keyed by node ID",
+    )
     modal_result: Optional[ModalResult] = Field(default=None, description="Modal eigenvalue analysis results (if applicable)")
     time_history_result: Optional[TimeHistoryResult] = Field(default=None, description="Dynamic time history analysis results (if applicable)")
     stiffness_basis: Literal["gross", "cracked"] = Field(
@@ -56,6 +64,10 @@ class AnalysisResult(BaseSchemaModel):
             object.__setattr__(self, "node_results", ResultDict(self.node_results))
         if self.element_results and not isinstance(self.element_results, ResultDict):
             object.__setattr__(self, "element_results", ResultDict(self.element_results))
+        if self.shell_results and not isinstance(self.shell_results, ResultDict):
+            object.__setattr__(self, "shell_results", ResultDict(self.shell_results))
+        if self.shell_node_results and not isinstance(self.shell_node_results, ResultDict):
+            object.__setattr__(self, "shell_node_results", ResultDict(self.shell_node_results))
         return self
 
     @property

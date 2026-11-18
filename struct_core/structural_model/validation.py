@@ -18,6 +18,52 @@ class StructuralValidationError(ValueError):
         super().__init__(message)
 
 
+def _shell_errors(model: StructuralModel, node_ids: Set, material_types: Dict, section_ids: Set,
+                  element_ids: Set) -> List[str]:
+    """Errors of the shell sections, shell elements, and shell loads. IDs must be unique across frame and shell
+    sections, and across frame and shell elements. Shape errors follow CSI Analysis Reference Manual §10.2.1
+    (``struct_core.geometry.check_model_shells``); its warnings are not errors and are left to the caller."""
+    from ..geometry import check_model_shells
+
+    errors: List[str] = []
+    shell_section_ids: Set = set()
+    for s in model.shell_sections:
+        if s.id in shell_section_ids or s.id in section_ids:
+            errors.append(f"Duplicate Section ID found: '{s.id}' (shell section)")
+        shell_section_ids.add(s.id)
+        if s.material_id not in material_types:
+            errors.append(f"Shell section '{s.id}' references missing material_id '{s.material_id}'")
+
+    shell_ids: Set = set()
+    geometry_ok = True
+    for el in model.shell_elements:
+        if el.id in shell_ids or el.id in element_ids:
+            errors.append(f"Duplicate Element ID found: '{el.id}' (shell element)")
+        shell_ids.add(el.id)
+        if el.section_id not in shell_section_ids:
+            hint = " (a frame section; shell elements need a shell section)" if el.section_id in section_ids else ""
+            errors.append(f"Shell element '{el.id}' references missing shell section '{el.section_id}'{hint}")
+        missing = [nid for nid in el.node_ids if nid not in node_ids]
+        if missing:
+            geometry_ok = False
+            errors.append(f"Shell element '{el.id}' references missing node(s) {missing}")
+
+    if model.shell_elements and geometry_ok:
+        try:
+            issues = check_model_shells(model)
+        except ValueError as exc:  # e.g. a reference_vector parallel to local axis 3
+            errors.append(f"Shell element local axes: {exc}")
+        else:
+            errors.extend(i.message for i in issues if i.severity == "error")
+
+    for lc in model.load_cases:
+        for sl in lc.shell_loads:
+            missing = [eid for eid in sl.element_ids if eid not in shell_ids]
+            if missing:
+                errors.append(f"Shell load in Load Case '{lc.id}' references missing shell element(s) {missing}")
+    return errors
+
+
 def validate_structural_model(model: StructuralModel, raise_error: bool = True) -> List[str]:
     """
     Validates essential structural model integrity:
@@ -181,6 +227,9 @@ def validate_structural_model(model: StructuralModel, raise_error: bool = True) 
         for nid in al.node_ids:
             if nid not in node_ids:
                 errors.append(f"AreaLoad references missing node_id '{nid}'")
+
+    # 10. Shell sections, shell elements, and shell loads
+    errors.extend(_shell_errors(model, node_ids, material_types, section_ids, element_ids))
 
     if raise_error and errors:
         raise StructuralValidationError(errors)
