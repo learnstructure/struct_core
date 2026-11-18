@@ -42,6 +42,12 @@ SHELL_FORCE_KEYS: Tuple[str, ...] = ("F11", "F22", "F12", "M11", "M22", "M12", "
 # Sine of the angle between axis 3 and global Z below which an element is horizontal (CSI §10.6.2)
 SHELL_HORIZONTAL_SINE = 1e-3
 
+# Cosine of the angle between the normal of the plane through j1, j2, j3 and the normal from the midpoints of
+# opposite sides above which a quadrilateral keeps the first as its axis 3. Not in the CSI manual: measured on
+# SAP2000 27.1 (AreaElm.GetTransformationMatrix switches between 0.788 and 0.818 degrees for three shapes and two
+# sizes; fem3d/SHELL_PLAN.md, M6), and equal to 1 - 1e-4 (0.810 degrees).
+SHELL_PLANAR_COSINE = 1.0 - 1e-4
+
 # Shape limits of CSI §10.2.1 "Shape Guidelines"
 SHELL_WARP_WARN_DEG = 30.0      # largest angle between corner normals: best results below this
 SHELL_WARP_LIMIT_DEG = 45.0     # ... and it should not exceed this
@@ -133,10 +139,35 @@ def shell_local_axes(
     -------
     numpy.ndarray, shape (N, 3, 3)
         Rows e1, e2, e3 of each element in global components.
+
+    Notes
+    -----
+    Warped quadrilaterals follow what SAP2000 27 does, which the manual does not state (measured with the API,
+    fem3d/SHELL_PLAN.md M6). The orientation rules above (default, reference vector, angle) are applied to the
+    nominal normal, that of the plane through j1, j2, j3, which is also what ``AreaObj.GetTransformationMatrix``
+    reports for the area object. The analysis element then takes axis 3 from the midpoints of opposite sides
+    (§10.6.1), axis 2 as the projection of the nominal axis 2 on that plane, and axis 1 = 2 x 3
+    (``AreaElm.GetTransformationMatrix``), unless the two normals are within ``SHELL_PLANAR_COSINE`` (0.81
+    degrees): such a nearly planar element keeps the nominal axes. The axes returned are those of the element, in
+    which SAP2000 and fem3d report results. For flat elements and triangles both normals coincide.
     """
     x = _as_coords(coords)
     n = x.shape[0]
     e3 = shell_normals(x)
+    if x.shape[1] == 4:
+        nominal = np.cross(x[:, 1] - x[:, 0], x[:, 2] - x[:, 0])
+        size = np.linalg.norm(nominal, axis=1)
+        collinear = np.nonzero(size <= 1e-12 * np.linalg.norm(_vector_area(x), axis=1))[0]
+        if collinear.size:
+            raise ValueError(f"Shell element(s) at index {collinear.tolist()} have collinear nodes j1, j2, j3 (an "
+                             f"inside angle of 180 degrees, CSI Analysis Reference Manual §10.2.1)")
+        nominal = nominal / size[:, None]
+        # nearly planar elements keep the plane through j1, j2, j3 (as SAP2000 27 does)
+        planar = np.sum(nominal * e3, axis=1) >= SHELL_PLANAR_COSINE
+        element_e3 = np.where(planar[:, None], nominal, e3)
+        e3 = nominal
+    else:
+        element_e3 = None
 
     # Default orientation (CSI §10.6.2): the 3-2 plane is vertical, axis 2 up; horizontal elements take +Y
     horizontal = np.hypot(e3[:, 0], e3[:, 1]) < SHELL_HORIZONTAL_SINE
@@ -167,6 +198,10 @@ def shell_local_axes(
     c, s = np.cos(ang)[:, None], np.sin(ang)[:, None]
     e1r = c * e1 + s * e2
     e2r = -s * e1 + c * e2
+    if element_e3 is not None:  # element axes of a quadrilateral: nominal axis 2 projected on the element plane
+        e3 = element_e3
+        e2r = _unit(e2r - np.sum(e2r * e3, axis=1, keepdims=True) * e3)
+        e1r = np.cross(e2r, e3)
     return np.stack([e1r, e2r, e3], axis=1)
 
 

@@ -6,6 +6,17 @@ All notable changes to `struct_core` are recorded in this file. The format follo
 
 ## [Unreleased]
 
+### Changed
+- `geometry.shell_local_axes`: warped quadrilaterals now get the axes SAP2000 27 gives them, which the CSI manual
+  does not state (measured through the API, fem3d/SHELL_PLAN.md M6). The orientation rules (default, reference
+  vector, angle) apply to the plane through j1, j2, j3; the element then takes axis 3 from the midpoints of
+  opposite sides and axis 2 as the projection of the first axis 2 on that plane. Quadrilaterals whose two normals
+  are within 0.81 degrees (`SHELL_PLANAR_COSINE` = 1 - 1e-4, measured) keep the plane through j1, j2, j3. Flat
+  elements and triangles are unchanged; the axes of 20 test panels and of the elements of SAP2000's own
+  verification models equal SAP2000's to round-off (`struct_link/tests/test_sap2000_shells.py`). A cyclic
+  renumbering keeps axis 3 of a warped element but may turn axes 1 and 2, as in SAP2000. Nodes j1, j2, j3 on a
+  line are refused.
+
 ### Added
 - Shell elements (slabs and walls), ROADMAP §4, plan in `fem3d/SHELL_PLAN.md` (M1):
   - `ShellSection` (membrane thickness, optional bending thickness, `behavior` shell/membrane/plate, `plate_theory`

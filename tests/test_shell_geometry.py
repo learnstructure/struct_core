@@ -159,11 +159,47 @@ def test_vectorized_axes_equal_one_at_a_time():
         assert_triad(all_at_once[i])
 
 
-def test_cyclic_renumbering_keeps_the_axes():
-    pts = np.array([[0, 0, 0], [2, 0.1, 0], [2.3, 1.4, 0.4], [-0.2, 1.1, 0.1]])
+def test_cyclic_renumbering_keeps_the_axes_of_planar_elements():
+    pts = np.array([[0, 0, 0], [2, 0.1, 0.3], [2.3, 1.4, 0.75], [-0.2, 1.1, 0.4]])
+    pts[3] = pts[0] + pts[2] - pts[1] + np.array([0.3, -0.2, 0.0]) @ np.eye(3)  # move j4 within the plane
+    n = np.cross(pts[1] - pts[0], pts[2] - pts[0])
+    pts[3] -= ((pts[3] - pts[0]) @ n) / (n @ n) * n
     base = axes_of(pts)
     for shift in (1, 2, 3):
         assert np.allclose(axes_of(np.roll(pts, shift, axis=0)), base)
+
+
+def test_warped_element_axes_follow_sap2000():
+    """SAP2000 27 (measured, fem3d/SHELL_PLAN.md M6): the orientation rules apply to the plane through j1, j2, j3
+    (so they depend on the first node), then axis 3 is the midpoint normal and axis 2 the projection of the nominal
+    axis 2. A cyclic renumbering keeps axis 3 and turns axes 1 and 2 about it."""
+    pts = np.array([[0, 0, 0], [2, 0.1, 0], [2.3, 1.4, 0.4], [-0.2, 1.1, 0.1]])
+    base = axes_of(pts)
+    nominal = np.cross(pts[1] - pts[0], pts[2] - pts[0])
+    nominal /= np.linalg.norm(nominal)
+    e2_nominal = np.array([0.0, 0.0, 1.0]) - nominal[2] * nominal  # default: axis 2 up in the nominal plane
+    e2 = e2_nominal - (e2_nominal @ base[2]) * base[2]
+    assert np.allclose(base[1], e2 / np.linalg.norm(e2))
+    assert_triad(base)
+    for shift in (1, 2, 3):
+        turned = axes_of(np.roll(pts, shift, axis=0))
+        assert np.allclose(turned[2], base[2])
+        assert_triad(turned)
+
+
+def test_nearly_planar_element_keeps_the_plane_of_its_first_three_nodes():
+    """Below SHELL_PLANAR_COSINE (0.81 degrees between the two normals) SAP2000 keeps the plane through j1, j2, j3."""
+    from struct_core.geometry.shell import SHELL_PLANAR_COSINE
+
+    for w, planar in ((0.0050, True), (0.0056, False)):  # the normals are 0.81 degrees apart near w = 0.0053
+        pts = np.array([[0, 0, w], [1, 0, -w], [1, 1, w], [0, 1, -w]]) + [0.0, 0.0, 0.0]
+        pts[:, 2] += 0.3 * pts[:, 1]
+        nominal = np.cross(pts[1] - pts[0], pts[2] - pts[0])
+        nominal /= np.linalg.norm(nominal)
+        midpoint = np.cross(pts[2] - pts[0], pts[3] - pts[1])
+        midpoint /= np.linalg.norm(midpoint)
+        assert bool(nominal @ midpoint >= SHELL_PLANAR_COSINE) == planar
+        assert np.allclose(axes_of(pts)[2], nominal if planar else midpoint)
 
 
 def test_zero_area_is_refused():
