@@ -68,6 +68,7 @@ from .units import (
 from .project import Project
 from .serialization import from_dict, from_json, load_json, save_json, to_dict, to_json
 from .structural_model import (
+    STIFFNESS_MODIFIER_KEYS,
     AnalysisCase,
     AreaLoad,
     BaseAnalysisCase,
@@ -157,6 +158,7 @@ __all__ = [
     "BaseElement",
     "TrussElement",
     "BeamElement",
+    "STIFFNESS_MODIFIER_KEYS",
     "SpringElement",
     "Element",
     "ElementRegistry",

@@ -25,6 +25,7 @@ from .analysis import (
     ResponseSpectrumAnalysis,
 )
 from .elements import (
+    STIFFNESS_MODIFIER_KEYS,
     BaseElement,
     BeamElement,
     Element,
@@ -105,6 +106,7 @@ __all__ = [
     "BaseElement",
     "TrussElement",
     "BeamElement",
+    "STIFFNESS_MODIFIER_KEYS",
     "SpringElement",
     "Element",
     "ElementRegistry",

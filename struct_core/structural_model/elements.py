@@ -4,9 +4,13 @@ Element schemas representing structural members (Truss, Beam, Spring).
 Truss and beam elements reference a section, which owns the material (``StructuralModel.material_of``).
 """
 
-from typing import Annotated, Any, Dict, List, Literal, Optional, Union
-from pydantic import Field, model_validator
+from typing import Annotated, Any, Dict, List, Literal, Optional, Tuple, Union
+from pydantic import Field, field_validator, model_validator
 from ..base import BaseSchemaModel, ElementId, NodeId, SectionId
+
+# Keys of BeamElement.stiffness_modifiers: cross-section area, shear areas along local 2 and 3, torsional constant,
+# moments of inertia about local 2 and 3, mass, and weight (the order of the CSI frame modifier array)
+STIFFNESS_MODIFIER_KEYS: Tuple[str, ...] = ("A", "As2", "As3", "J", "I2", "I3", "mass", "weight")
 
 
 class BaseElement(BaseSchemaModel):
@@ -53,8 +57,18 @@ class BeamElement(BaseElement):
     )
     stiffness_modifiers: Optional[Dict[str, float]] = Field(
         default=None,
-        description="Property / stiffness modifiers: A, As2, As3, J, I2, I3, mass, weight"
+        description="Property / stiffness modifiers (multipliers of the section's properties), keyed by "
+                    "STIFFNESS_MODIFIER_KEYS: A, As2, As3, J, I2, I3, mass, weight"
     )
+
+    @field_validator("stiffness_modifiers")
+    @classmethod
+    def _validate_modifier_keys(cls, mods: Optional[Dict[str, float]]) -> Optional[Dict[str, float]]:
+        if mods:
+            unknown = sorted(set(mods) - set(STIFFNESS_MODIFIER_KEYS))
+            if unknown:
+                raise ValueError(f"Unknown stiffness modifiers {unknown}; use {list(STIFFNESS_MODIFIER_KEYS)}")
+        return mods
 
     @model_validator(mode="before")
     @classmethod

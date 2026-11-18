@@ -64,6 +64,17 @@ def test_beam_element_shear_deformation():
     assert elem.include_shear_deformation is True
 
 
+def test_beam_element_stiffness_modifier_keys():
+    """Only STIFFNESS_MODIFIER_KEYS are accepted: a misspelled or legacy key (I, As) is refused, not ignored."""
+    from struct_core import STIFFNESS_MODIFIER_KEYS
+
+    mods = {k: 0.5 for k in STIFFNESS_MODIFIER_KEYS}
+    assert BeamElement(id="B", start_node=1, end_node=2, section_id="R", stiffness_modifiers=mods).stiffness_modifiers == mods
+    for bad in ({"I": 0.35}, {"As": 2.0}, {"i3": 0.35}):
+        with pytest.raises(ValueError, match="Unknown stiffness modifiers"):
+            BeamElement(id="B", start_node=1, end_node=2, section_id="R", stiffness_modifiers=bad)
+
+
 
 def test_spring_element():
     spring = SpringElement(id="S1", start_node=1, end_node=2, kx=1000.0, ky=500.0)
