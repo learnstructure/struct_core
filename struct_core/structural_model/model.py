@@ -85,9 +85,9 @@ class StructuralModel(BaseSchemaModel):
         """The shell element with ID ``element_id``, or None."""
         return next((e for e in self.shell_elements if e.id == element_id), None)
 
-    def get_group(self, name: str) -> Optional[ObjectGroup]:
-        """The object group named ``name``, or None."""
-        return next((g for g in self.groups if g.name == name), None)
+    def get_group(self, group_id: str) -> Optional[ObjectGroup]:
+        """The object group with ID ``group_id``, or None."""
+        return next((g for g in self.groups if g.id == group_id), None)
 
     def section_of(
         self, element: Union[Element, ShellElement, ElementId]

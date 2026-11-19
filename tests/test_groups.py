@@ -39,8 +39,8 @@ def _sample_model() -> StructuralModel:
         shell_elements=[ShellElement(id="A1", node_ids=["2", "3", "4", "5"], section_id="S200")],
         supports=[Support.fixed_3d("1")],
         groups=[
-            ObjectGroup(name="roof", node_ids=["2", "3"], shell_element_ids=["A1"]),
-            ObjectGroup(name="columns", element_ids=["C1"]),
+            ObjectGroup(id="roof", node_ids=["2", "3"], shell_element_ids=["A1"]),
+            ObjectGroup(id="columns", element_ids=["C1"]),
         ],
     )
 
@@ -48,7 +48,7 @@ def _sample_model() -> StructuralModel:
 def test_object_group_schema_lookup_and_json_roundtrip():
     model = _sample_model()
     assert validate_structural_model(model, raise_error=False) == []
-    assert model.get_group("roof") == ObjectGroup(name="roof", node_ids=["2", "3"], shell_element_ids=["A1"])
+    assert model.get_group("roof") == ObjectGroup(id="roof", node_ids=["2", "3"], shell_element_ids=["A1"])
     assert model.get_group("missing") is None
 
     reloaded = StructuralModel.model_validate_json(model.model_dump_json())
@@ -56,26 +56,36 @@ def test_object_group_schema_lookup_and_json_roundtrip():
 
     project = Project(model=model, units="kN, m")
     assert project.groups == model.groups
-    project.groups = [ObjectGroup(name="base", node_ids=["1"])]
-    assert [g.name for g in project.model.groups] == ["base"]
+    project.groups = [ObjectGroup(id="base", node_ids=["1"])]
+    assert [g.id for g in project.model.groups] == ["base"]
 
 
-@pytest.mark.parametrize("bad_name", ["", "   "])
-def test_object_group_rejects_blank_name(bad_name):
+@pytest.mark.parametrize("bad_id", ["", "   "])
+def test_object_group_rejects_blank_id(bad_id):
     with pytest.raises(ValidationError):
-        ObjectGroup(name=bad_name)
+        ObjectGroup(id=bad_id)
 
 
 def test_validate_structural_model_checks_group_duplicates_and_references():
     model = _sample_model()
-    model.groups.append(ObjectGroup(name="roof", node_ids=["999"]))
-    model.groups.append(ObjectGroup(name="bad_refs", element_ids=["NO_EL"], shell_element_ids=["NO_SH"]))
+    model.groups.append(ObjectGroup(id="roof", node_ids=["999"]))
+    model.groups.append(
+        ObjectGroup(
+            id="bad_refs",
+            node_ids=["1", "1"],
+            element_ids=["C1", "C1", "NO_EL"],
+            shell_element_ids=["A1", "A1", "NO_SH"],
+        )
+    )
 
     errors = validate_structural_model(model, raise_error=False)
     text = "\n".join(errors)
-    assert "Duplicate group name found: 'roof'" in text
+    assert "Duplicate group ID found: 'roof'" in text
     assert "Group 'roof' references missing node(s) ['999']" in text
+    assert "Group 'bad_refs' contains duplicate node ID(s) ['1']" in text
+    assert "Group 'bad_refs' contains duplicate element ID(s) ['C1']" in text
     assert "Group 'bad_refs' references missing element(s) ['NO_EL']" in text
+    assert "Group 'bad_refs' contains duplicate shell element ID(s) ['A1']" in text
     assert "Group 'bad_refs' references missing shell element(s) ['NO_SH']" in text
 
     with pytest.raises(StructuralValidationError):
