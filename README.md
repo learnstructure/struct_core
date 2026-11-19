@@ -290,14 +290,14 @@ project.detailing_results["ACI318"] = DetailingResult(
 | `ConcreteMaterial`, `RebarMaterial` | Reinforced-concrete materials: elastic for analysis (subclasses of `ElasticMaterial`) with their design strengths, concrete `fc` and rebar `fy` / `fu`, in the model stress unit |
 | `RectangularSection`, `CircularSection`, `GeneralSection` | Cross-section definitions, each with its `material_id` (including effective shear areas `As2`, `As3` for Timoshenko beam analysis). Rectangular and circular sections may be reinforced concrete: `rebar_material_id` (longitudinal, fy), `transverse_rebar_material_id` (stirrups and ties, fyt) and clear `cover` |
 | `TrussElement`, `BeamElement`, `SpringElement` | Structural element types (including end releases and `include_shear_deformation` flag); truss and beam elements reference a `section_id` |
-| `ShellSection`, `ShellElement` | Slabs and walls: 3- or 4-node shell elements in `StructuralModel.shell_elements`, with sections in `StructuralModel.shell_sections` (membrane thickness, optional bending thickness, `behavior` shell/membrane/plate, `plate_theory` thick/thin). Local axes follow SAP2000 (`axis_angle`, `reference_vector`); see `struct_core.geometry` below |
+| `ShellSection`, `ShellElement` | Slabs and walls: 3- or 4-node shell elements in `StructuralModel.shell_elements`, with sections in `StructuralModel.shell_sections` (`thickness`, optional `bending_thickness` / `effective_bending_thickness`, `behavior` `shell`/`membrane`/`plate`, `plate_theory` `thick`/`thin`). Local axes follow SAP2000 (`axis_angle`, `reference_vector`); see `struct_core.geometry` below. Rebar and cover fields are not yet on `ShellSection` |
 | `Support` | Boundary condition (pinned, fixed, roller, or custom spring stiffness) |
-| `PointLoad`, `DistributedLoad`, `AreaLoad`, `GroundMotion` | Applied loads. `AreaLoad` is a floor pressure distributed to frame members |
-| `ShellLoad` | Uniform load per unit area on shell elements (`LoadCase.shell_loads`), along local axis 3 or a global axis |
+| `PointLoad`, `DistributedLoad`, `AreaLoad`, `GroundMotion` | Applied loads. `AreaLoad` is a floor pressure distributed to frame members, not a load on shell elements |
+| `ShellLoad` | Uniform load per unit area on shell elements (`LoadCase.shell_loads`), along `local_3` or a global axis (`x`, `y`, `z`) |
 | `LoadCase`, `LoadCombination` | Load grouping and factored combinations |
 | `MassSource`, `MassSourceFactor` | Dynamic mass source specification (multipliers on dead/live load cases) |
 | `LinearStaticAnalysis`, `ModalAnalysis`, `TimeHistoryAnalysis` | Analysis case definitions |
-| `StructuralModel` | Top-level model container; `get_material`, `get_section`, `section_of(element)`, `material_of(element or section)` resolve references. Models saved with `material_id` on elements (before 0.3) are migrated on load: the material moves to the section, and a section shared by several materials is split (`COL`, `COL_C30`) |
+| `StructuralModel` | Top-level model container; `get_material`, `get_section`, `get_shell_section`, `get_shell_element`, `section_of(element)`, and `material_of(element or section)` resolve frame and shell references. Models saved with `material_id` on elements (before 0.3) are migrated on load: the material moves to the section, and a section shared by several materials is split (`COL`, `COL_C30`) |
 | `ElementRegistry` | Plugin registry for custom element types |
 | `classify_frame_members`, `frame_stories`, `frame_levels`, `vertical_axis`, `node_elevation` | Frame topology: column/beam/brace roles and story bands (`FrameStory`), shared by the analysis and design packages |
 
@@ -311,23 +311,23 @@ project.detailing_results["ACI318"] = DetailingResult(
 | `BeamSectionForce`, `ElementResult` | Internal forces along beam elements (axial force tension positive). `envelope_results` keeps every enveloped combination's station forces in `ElementResult.combination_forces`, so design can check concurrent forces |
 | `ModeShape`, `ModalResult` | Natural periods and mode shapes |
 | `TimeHistoryResult` | Time-series dynamic response |
-| `ShellForces`, `ShellElementResult`, `ShellNodeForces` | Shell stress resultants per unit length (F11, F22, F12, M11, M22, M12, V13, V23, with the names and signs of the CSI Analysis Reference Manual §10.18) at Gauss points, element corners, and averaged at nodes per plane (`AnalysisResult.shell_results`, `shell_node_results`) |
+| `ShellForces`, `ShellElementResult`, `ShellNodeForces` | Shell stress resultants per unit length (`F11`, `F22`, `F12`, `M11`, `M22`, `M12`, `V13`, `V23`, names and signs of CSI Analysis Reference Manual §10.18) at Gauss points, element corners, and averaged at nodes per plane (`AnalysisResult.shell_results`, `shell_node_results`). Combined by `superpose_results` and `envelope_results` (`combination_corners`) |
 | `AnalysisResult` | Container keyed by analysis case ID. `stiffness_basis` (`gross` or `cracked`) records the member stiffness used; `code_checks` holds frame-level analysis checks (slenderness, story drift, stability) |
 
 ### `geometry` — Shared Geometry of Shell Elements
 
-The local axes of shell elements are computed only here, so that solvers, SAP2000/ETABS exchange, drawing, and design
-agree. Every function works on N elements at once (coordinates of shape (N, k, 3), k = 3 or 4).
+The local axes of shell elements are computed only here, so that solvers, SAP2000/ETABS exchange, drawing, and design agree. Every array function works on N elements at once (coordinates of shape (N, k, 3), k = 3 or 4). See [`examples/shell_local_axes.py`](examples/shell_local_axes.py).
 
 | Function | Description |
 |:---|:---|
-| `shell_local_axes` | Local axes 1-2-3 as an (N, 3, 3) array, SAP2000 convention (CSI Analysis Reference Manual §10.6–10.7): axis 3 normal (right-hand rule on j1-j2-j3; quadrilateral plane through the midpoints of opposite sides), axis 2 up or along +Y for horizontal elements, then `axis_angle` about axis 3 or a `reference_vector` |
-| `check_shell_shapes`, `shell_shape_measures` | Shape checks of CSI §10.2.1: warping (warn above 30°, refuse above 45°), inside angle (refuse at 180° or more; quadrilaterals warn outside 45°–135°), aspect ratio (warn above 4, refuse above 10) |
+| `shell_local_axes` | Local axes 1-2-3 as an (N, 3, 3) array, SAP2000 27 convention (CSI Analysis Reference Manual §10.6–10.7). Orientation rules apply on the plane through j1, j2, j3 (axis 2 up, or +Y for horizontal elements, then `axis_angle` or `reference_vector`). Warped quadrilaterals beyond 0.81° (`struct_core.geometry.shell.SHELL_PLANAR_COSINE`) take axis 3 from the midpoints of opposite sides and project axis 2 onto that plane |
+| `shell_areas`, `shell_normals` | Element areas and unit normals (axis 3) |
+| `check_shell_shapes`, `shell_shape_measures`, `ShellShapeIssue` | Shape checks of CSI §10.2.1: warping (warn above 30°, refuse above 45°), inside angle (refuse at 180° or more; quadrilaterals warn outside 45°–135°), aspect ratio (warn above 4, refuse above 10) |
 | `check_normal_consistency` | Flags neighbours with flipped normals (M11 and M22 change sign) and normals away from a required direction (+Z for a floor) |
-| `rotate_shell_resultants` | Resultants in any in-plane direction (for example reinforcement along global X), also with a flipped normal |
+| `rotate_shell_resultants` | Rotates the eight resultants (`SHELL_FORCE_KEYS`) into any in-plane direction, also with a flipped normal |
 | `average_shell_node_forces` | Averages corner values at nodes by plane, never across a slab-wall junction |
 | `shell_corner_weights` | Shares of an element's mass or load at its corners (CSI §10.11) |
-| `model_shell_axes`, `check_model_shells` | The same for the shell elements of a `StructuralModel` |
+| `model_shell_axes`, `model_shell_coordinates`, `check_model_shells` | Model-level helpers for the shell elements of a `StructuralModel` |
 
 ### `design_result` — Design Outputs
 
@@ -356,7 +356,6 @@ agree. Every function works on N elements at once (coordinates of shape (N, k, 3
 
 ```bash
 pytest
-# 50 tests — covers all subpackages and full Project lifecycle JSON round-trip
 ```
 
 ---
