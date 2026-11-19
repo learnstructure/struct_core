@@ -7,6 +7,11 @@ All notable changes to `struct_core` are recorded in this file. The format follo
 ## [Unreleased]
 
 ### Added
+- `ObjectGroup` (`struct_core.structural_model.groups`) and `StructuralModel.groups` (with `StructuralModel.get_group`
+  and `Project.groups` delegation), for named selections of nodes, frame elements, and shell elements (ROADMAP §1a).
+  `validate_structural_model` checks unique group names and valid node, element, and shell-element references.
+- `"other"` in `VALID_LOAD_TYPES` and `LOAD_TYPE_SYNONYMS`, so CSI load patterns with `DesignType=Other` keep their
+  type across import and export without being re-guessed from the pattern name.
 - Shell elements (slabs and walls), ROADMAP §4, plan in `fem3d/SHELL_PLAN.md` (M1):
   - `ShellSection` (membrane thickness, optional bending thickness, `behavior` shell/membrane/plate, `plate_theory`
     thick/thin) and `ShellElement` (3 or 4 nodes, `axis_angle`, `reference_vector`), in the new lists

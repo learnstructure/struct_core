@@ -10,6 +10,7 @@ The **input engineering model** subpackage — the canonical definition of *what
 | `materials.py` | `BaseMaterial`, `ElasticMaterial`, `ConcreteMaterial`, `RebarMaterial`, `BilinearMaterial`, `Material` (discriminated union) |
 | `sections.py` | `BaseSection` (with `material_id`), `SolidSection` (reinforcement and cover), `RectangularSection`, `CircularSection`, `GeneralSection`, `Section` (discriminated union) |
 | `elements.py` | `BaseElement`, `TrussElement`, `BeamElement`, `SpringElement`, `Element` (discriminated union) |
+| `groups.py` | `ObjectGroup` (named node, element, and shell-element groups) |
 | `supports.py` | `Support` (with `pinned`, `fixed`, `roller_x`, `roller_y` class-method factories) |
 | `loads.py` | `PointLoad`, `DistributedLoad`, `GroundMotion`, `LoadCase`, `LoadCaseFactor`, `LoadCombination` |
 | `analysis.py` | `BaseAnalysisCase`, `LinearStaticAnalysis`, `NonlinearStaticAnalysis`, `ModalAnalysis`, `TimeHistoryAnalysis`, `AnalysisCase` (discriminated union) |

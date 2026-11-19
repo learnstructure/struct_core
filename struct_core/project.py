@@ -177,6 +177,7 @@ class Project(BaseSchemaModel):
     def __setattr__(self, name: str, value: Any) -> None:
         if name in (
             "nodes", "elements", "materials", "sections", "supports",
+            "shell_elements", "shell_sections", "groups",
             "load_cases", "load_combinations", "area_loads", "story_elevations",
             "ground_motions", "analysis_cases", "mass_source", "mass_sources",
             "dimension", "vertical_axis",

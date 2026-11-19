@@ -8,6 +8,7 @@ from ..base import BaseSchemaModel, ElementId, MaterialId, SectionId
 from ..units import Units, parse_units
 from .analysis import AnalysisCase
 from .elements import Element
+from .groups import ObjectGroup
 from .loads import AreaLoad, GroundMotion, LoadCase, LoadCombination, MassSource
 from .materials import Material
 from .migration import migrate_element_materials
@@ -40,6 +41,7 @@ class StructuralModel(BaseSchemaModel):
     load_combinations: List[LoadCombination] = Field(default_factory=list, description="List of load combinations")
     area_loads: List[AreaLoad] = Field(default_factory=list, description="List of area/surface loads applied over floors/panels")
     story_elevations: List[float] = Field(default_factory=list, description="List of floor/story elevations (Z or Y coordinates)")
+    groups: List[ObjectGroup] = Field(default_factory=list, description="Named groups of nodes, elements, and shell elements")
     ground_motions: List[GroundMotion] = Field(default_factory=list, description="List of ground motion records")
     analysis_cases: List[AnalysisCase] = Field(default_factory=list, description="List of analysis cases")
     mass_source: Optional[MassSource] = Field(default=None, description="Active mass source configuration for modal and dynamic analysis")
@@ -82,6 +84,10 @@ class StructuralModel(BaseSchemaModel):
     def get_shell_element(self, element_id: Optional[ElementId]) -> Optional[ShellElement]:
         """The shell element with ID ``element_id``, or None."""
         return next((e for e in self.shell_elements if e.id == element_id), None)
+
+    def get_group(self, name: str) -> Optional[ObjectGroup]:
+        """The object group named ``name``, or None."""
+        return next((g for g in self.groups if g.name == name), None)
 
     def section_of(
         self, element: Union[Element, ShellElement, ElementId]

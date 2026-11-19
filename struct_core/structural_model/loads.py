@@ -20,6 +20,7 @@ VALID_LOAD_TYPES: Tuple[str, ...] = (
     "soil",
     "fluid",
     "temperature",
+    "other",
 )
 
 LOAD_TYPE_SYNONYMS: Dict[str, str] = {
@@ -58,6 +59,7 @@ LOAD_TYPE_SYNONYMS: Dict[str, str] = {
     "f": "fluid",
     "temperature": "temperature",
     "t": "temperature",
+    "other": "other",
 }
 
 
@@ -320,7 +322,7 @@ class LoadCase(BaseSchemaModel):
     name: Optional[str] = Field(default=None, description="Human-readable load case name")
     load_type: Optional[str] = Field(
         default=None,
-        description="Physical load type ('dead', 'super_dead', 'live', 'roof_live', 'snow', 'wind', 'seismic', 'partition')",
+        description="Physical load type (one of VALID_LOAD_TYPES, e.g. 'dead', 'super_dead', 'live', 'roof_live', 'snow', 'wind', 'seismic', 'partition', 'temperature', 'other')",
     )
     direction: Optional[str] = Field(
         default=None,

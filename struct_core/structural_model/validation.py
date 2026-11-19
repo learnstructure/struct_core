@@ -231,6 +231,24 @@ def validate_structural_model(model: StructuralModel, raise_error: bool = True) 
     # 10. Shell sections, shell elements, and shell loads
     errors.extend(_shell_errors(model, node_ids, material_types, section_ids, element_ids))
 
+    # 11. Object groups
+    shell_ids = {el.id for el in model.shell_elements}
+    seen_groups: Set[str] = set()
+    for group in model.groups:
+        if group.name in seen_groups:
+            errors.append(f"Duplicate group name found: '{group.name}'")
+        else:
+            seen_groups.add(group.name)
+        missing_nodes = [nid for nid in group.node_ids if nid not in node_ids]
+        if missing_nodes:
+            errors.append(f"Group '{group.name}' references missing node(s) {missing_nodes}")
+        missing_elems = [eid for eid in group.element_ids if eid not in element_ids]
+        if missing_elems:
+            errors.append(f"Group '{group.name}' references missing element(s) {missing_elems}")
+        missing_shells = [sid for sid in group.shell_element_ids if sid not in shell_ids]
+        if missing_shells:
+            errors.append(f"Group '{group.name}' references missing shell element(s) {missing_shells}")
+
     if raise_error and errors:
         raise StructuralValidationError(errors)
 

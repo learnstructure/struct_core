@@ -32,6 +32,7 @@ from .elements import (
     SpringElement,
     TrussElement,
 )
+from .groups import ObjectGroup
 from .loads import (
     AreaLoad,
     DistributedLoad,
@@ -139,6 +140,7 @@ __all__ = [
     "ResponseSpectrumAnalysis",
     "AnalysisCase",
     # Containers
+    "ObjectGroup",
     "StructuralModel",
     # Topology
     "FrameStory",
