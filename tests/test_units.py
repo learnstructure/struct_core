@@ -310,3 +310,18 @@ def test_project_metadata_units_assignment_syncs_model():
     assert proj.metadata.units == parse_units("kip, in")
     assert proj.model.units == parse_units("kip, in")
 
+
+def test_convert_project_scales_rsa_scale_factor():
+    """ResponseSpectrumAnalysis.scale_factor has acceleration units [L / T^2] and scales on unit conversion."""
+    from struct_core import ResponseSpectrumAnalysis
+
+    proj = Project(units="N, mm")
+    proj.model.analysis_cases = [
+        ResponseSpectrumAnalysis(
+            id="RSX", direction="X", combination="CQC", damping_ratio=0.05, scale_factor=9806.65,
+        )
+    ]
+    proj.convert_units("kN, m")
+    assert proj.model.analysis_cases[0].scale_factor == pytest.approx(9.80665, rel=1e-9)
+
+

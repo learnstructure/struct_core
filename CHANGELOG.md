@@ -6,6 +6,11 @@ All notable changes to `struct_core` are recorded in this file. The format follo
 
 ## [Unreleased]
 
+### Fixed
+- `convert_project_units` (`struct_core.units`): scales `ResponseSpectrumAnalysis.scale_factor` by the acceleration
+  conversion factor `conversion_factor(source_units, target_units, "acceleration")` when converting analysis cases
+  between unit systems (e.g. `N, mm` to `kN, m`). Test: `tests/test_units.py`.
+
 ### Changed
 - **Named stories (ROADMAP §1a):** replaced `StructuralModel.story_elevations` (no alias) with `Story(name, elevation)`
   (`struct_core.structural_model.stories`), `StructuralModel.stories: List[Story]` (levels above the base only), and

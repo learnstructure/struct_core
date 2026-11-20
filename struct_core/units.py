@@ -626,6 +626,7 @@ def convert_project_units(
     f_trans_stiff = conversion_factor(source_units, target_units, "trans_stiffness")
     f_rot_stiff = conversion_factor(source_units, target_units, "rot_stiffness")
     f_pressure = conversion_factor(source_units, target_units, "pressure")
+    f_accel = conversion_factor(source_units, target_units, "acceleration")
     converted: set = set()  # ids of material / section objects already converted
 
     model = getattr(target_proj, "model", None)
@@ -729,6 +730,11 @@ def convert_project_units(
                 al.story_elevation = float(al.story_elevation) * f_len
             if hasattr(al, "tributary_width") and al.tributary_width is not None:
                 al.tributary_width = float(al.tributary_width) * f_len
+
+        # Analysis cases (acceleration scale factor on ResponseSpectrumAnalysis)
+        for ac in getattr(model, "analysis_cases", []):
+            if hasattr(ac, "scale_factor") and ac.scale_factor is not None:
+                ac.scale_factor = float(ac.scale_factor) * f_accel
 
     # 7. Analysis Results
     def _scale_reaction(reac: Any) -> None:
