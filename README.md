@@ -314,7 +314,7 @@ project.detailing_results["ACI318"] = DetailingResult(
 | `ModeShape`, `ModalResult` | Natural periods and mode shapes |
 | `TimeHistoryResult` | Time-series dynamic response |
 | `ShellForces`, `ShellElementResult`, `ShellNodeForces` | Shell stress resultants per unit length (`F11`, `F22`, `F12`, `M11`, `M22`, `M12`, `V13`, `V23`, names and signs of CSI Analysis Reference Manual §10.18) at Gauss points, element corners, and averaged at nodes per plane (`AnalysisResult.shell_results`, `shell_node_results`). Combined by `superpose_results` and `envelope_results` (`combination_corners`) |
-| `AnalysisResult` | Container keyed by analysis case ID. `stiffness_basis` (`gross` or `cracked`) records the member stiffness used; `code_checks` holds frame-level analysis checks (slenderness, story drift, stability) |
+| `AnalysisResult` | Container keyed by analysis case ID. `stiffness_basis` records the member stiffness (`gross` or `cracked`) and any run-level shear override (`shear` or `no_shear`), `moment_magnified` flags combinations with ACI 318-25 §6.6.4 second-order moment magnification, and `code_checks` holds frame-level analysis checks (slenderness, story drift, stability) |
 
 ### `geometry` — Shared Geometry of Shell Elements
 

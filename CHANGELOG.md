@@ -38,6 +38,10 @@ All notable changes to `struct_core` are recorded in this file. The format follo
 - `convert_project_units` converts shell thicknesses, shell loads, and shell results.
 - `STIFFNESS_MODIFIER_KEYS`: the keys of `BeamElement.stiffness_modifiers` (A, As2, As3, J, I2, I3, mass, weight),
   in the order of the CSI frame modifier array. fem2d, fem3d, and struct_link use it.
+- `AnalysisResult.stiffness_basis` now records an optional run-level shear override alongside gross/cracked stiffness
+  (`gross`, `cracked`, `gross, shear`, `gross, no_shear`, `cracked, shear`, `cracked, no_shear`), with helpers
+  `STIFFNESS_BASIS_VALUES`, `format_stiffness_basis`, and `parse_stiffness_basis`, and `AnalysisResult.moment_magnified`
+  marks combinations modified by second-order moment magnification (ACI 318-25 §6.6.4).
 
 ### Changed
 - `geometry.shell_local_axes`: warped quadrilaterals now get the axes SAP2000 27 gives them, which the CSI manual

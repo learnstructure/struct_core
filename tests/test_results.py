@@ -222,3 +222,43 @@ def test_project_records_seismic_design_basis():
     project = Project(seismic_basis=basis)
     restored = Project.model_validate_json(project.model_dump_json())
     assert restored.seismic_basis == basis
+
+
+def test_stiffness_basis_format_parse_and_moment_magnified():
+    from pydantic import ValidationError
+    from struct_core import (
+        STIFFNESS_BASIS_VALUES,
+        AnalysisResult,
+        format_stiffness_basis,
+        parse_stiffness_basis,
+    )
+
+    assert format_stiffness_basis(cracked=False, include_shear_deformation=None) == "gross"
+    assert format_stiffness_basis(cracked=True, include_shear_deformation=None) == "cracked"
+    assert format_stiffness_basis(cracked=False, include_shear_deformation=True) == "gross, shear"
+    assert format_stiffness_basis(cracked=False, include_shear_deformation=False) == "gross, no_shear"
+    assert format_stiffness_basis(cracked=True, include_shear_deformation=True) == "cracked, shear"
+    assert format_stiffness_basis(cracked=True, include_shear_deformation=False) == "cracked, no_shear"
+
+    assert parse_stiffness_basis("gross") == (False, None)
+    assert parse_stiffness_basis("cracked") == (True, None)
+    assert parse_stiffness_basis("gross, shear") == (False, True)
+    assert parse_stiffness_basis("gross, no_shear") == (False, False)
+    assert parse_stiffness_basis("cracked, shear") == (True, True)
+    assert parse_stiffness_basis("cracked, no_shear") == (True, False)
+
+    for val in STIFFNESS_BASIS_VALUES:
+        res = AnalysisResult(analysis_case_id="C", stiffness_basis=val, moment_magnified=True)
+        restored = AnalysisResult.model_validate_json(res.model_dump_json())
+        assert restored.stiffness_basis == val
+        assert restored.moment_magnified is True
+
+    default_res = AnalysisResult(analysis_case_id="C0")
+    assert default_res.stiffness_basis == "gross"
+    assert default_res.moment_magnified is False
+
+    with pytest.raises(ValidationError):
+        AnalysisResult(analysis_case_id="BAD", stiffness_basis="bogus")
+
+    with pytest.raises(ValueError):
+        parse_stiffness_basis("bogus")

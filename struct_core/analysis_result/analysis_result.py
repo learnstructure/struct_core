@@ -2,7 +2,7 @@
 Top-level composite AnalysisResult schema holding nodal, element, modal, and dynamic time history outputs.
 """
 
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Tuple
 from pydantic import Field, model_validator
 from ..base import AnalysisCaseId, BaseSchemaModel, ElementId, NodeId, ResultDict
 from ..design_result.code_check import CodeCheckResult
@@ -11,6 +11,54 @@ from .modal_result import ModalResult
 from .node_result import NodeResult
 from .shell_result import ShellElementResult, ShellNodeForces
 from .time_history_result import TimeHistoryResult
+
+STIFFNESS_BASIS_VALUES: Tuple[str, ...] = (
+    "gross",
+    "cracked",
+    "gross, shear",
+    "gross, no_shear",
+    "cracked, shear",
+    "cracked, no_shear",
+)
+
+StiffnessBasis = Literal[
+    "gross",
+    "cracked",
+    "gross, shear",
+    "gross, no_shear",
+    "cracked, shear",
+    "cracked, no_shear",
+]
+
+
+def format_stiffness_basis(
+    *,
+    cracked: bool = False,
+    include_shear_deformation: Optional[bool] = None,
+) -> StiffnessBasis:
+    """Canonical ``AnalysisResult.stiffness_basis`` string, including any run-level shear override."""
+    base = "cracked" if cracked else "gross"
+    if include_shear_deformation is None:
+        return base  # type: ignore[return-value]
+    return f"{base}, {'shear' if include_shear_deformation else 'no_shear'}"  # type: ignore[return-value]
+
+
+def parse_stiffness_basis(stiffness_basis: Optional[str]) -> Tuple[bool, Optional[bool]]:
+    """Return ``(cracked, include_shear_deformation_override)`` parsed from ``stiffness_basis``."""
+    val = (stiffness_basis or "gross").strip()
+    parts = [p.strip() for p in val.split(",")]
+    cracked = parts[0] == "cracked"
+    shear_override: Optional[bool] = None
+    if len(parts) > 1:
+        if parts[1] == "shear":
+            shear_override = True
+        elif parts[1] == "no_shear":
+            shear_override = False
+        else:
+            raise ValueError(f"Unrecognized stiffness_basis shear qualifier in {stiffness_basis!r}.")
+    if parts[0] not in ("gross", "cracked"):
+        raise ValueError(f"Unrecognized stiffness_basis {stiffness_basis!r}.")
+    return cracked, shear_override
 
 
 class AnalysisResult(BaseSchemaModel):
@@ -44,9 +92,14 @@ class AnalysisResult(BaseSchemaModel):
     )
     modal_result: Optional[ModalResult] = Field(default=None, description="Modal eigenvalue analysis results (if applicable)")
     time_history_result: Optional[TimeHistoryResult] = Field(default=None, description="Dynamic time history analysis results (if applicable)")
-    stiffness_basis: Literal["gross", "cracked"] = Field(
+    stiffness_basis: StiffnessBasis = Field(
         default="gross",
-        description="Member stiffness used: gross sections, or cracked sections per ACI 318 Table 6.6.3.1.1",
+        description="Member stiffness used: gross or cracked sections (ACI 318 Table 6.6.3.1.1), "
+                    "plus optional run-level shear override ('shear' or 'no_shear')",
+    )
+    moment_magnified: bool = Field(
+        default=False,
+        description="True if member forces include ACI 318-25 §6.6.4 second-order moment magnification",
     )
     code_checks: List[CodeCheckResult] = Field(
         default_factory=list,

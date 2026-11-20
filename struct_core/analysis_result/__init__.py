@@ -5,7 +5,13 @@ struct_core.analysis_result
 The output engineering result produced by solver packages (`fem2d`, `structdyn`, ...).
 """
 
-from .analysis_result import AnalysisResult
+from .analysis_result import (
+    STIFFNESS_BASIS_VALUES,
+    AnalysisResult,
+    StiffnessBasis,
+    format_stiffness_basis,
+    parse_stiffness_basis,
+)
 from .element_result import STANDARD_STATIONS, BeamSectionForce, ElementForceResult, ElementResult
 from .modal_result import ModalResult, ModeShape
 from .shell_result import ShellElementResult, ShellForces, ShellNodeForces, shell_forces_from_array
@@ -25,7 +31,11 @@ __all__ = [
     "ModalResult",
     "TimeStepResult",
     "TimeHistoryResult",
+    "STIFFNESS_BASIS_VALUES",
+    "StiffnessBasis",
     "AnalysisResult",
+    "format_stiffness_basis",
+    "parse_stiffness_basis",
     "ShellForces",
     "ShellElementResult",
     "ShellNodeForces",

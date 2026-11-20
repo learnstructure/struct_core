@@ -8,6 +8,7 @@ the entire structural engineering ecosystem.
 
 from . import analysis_result, design_result, detailing_result, geometry, structural_model
 from .analysis_result import (
+    STIFFNESS_BASIS_VALUES,
     AnalysisResult,
     BeamSectionForce,
     ElementForceResult,
@@ -20,8 +21,11 @@ from .analysis_result import (
     ShellNodeForces,
     NodeReaction,
     NodeResult,
+    StiffnessBasis,
     TimeHistoryResult,
     TimeStepResult,
+    format_stiffness_basis,
+    parse_stiffness_basis,
 )
 from .base import (
     AnalysisCaseId,
@@ -228,7 +232,11 @@ __all__ = [
     "ModalResult",
     "TimeStepResult",
     "TimeHistoryResult",
+    "STIFFNESS_BASIS_VALUES",
+    "StiffnessBasis",
     "AnalysisResult",
+    "format_stiffness_basis",
+    "parse_stiffness_basis",
     "ShellElementResult",
     "ShellForces",
     "ShellNodeForces",
