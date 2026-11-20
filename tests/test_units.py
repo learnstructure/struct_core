@@ -101,7 +101,9 @@ def test_convert_project_geometry_and_results():
         Node(id="2", x=0.0, y=0.0, z=3.0),
         Node(id="3", x=5.0, y=0.0, z=3.0),
     ]
-    proj.model.story_elevations = [0.0, 3.0]
+    from struct_core import Story
+    proj.model.base_elevation = 0.0
+    proj.model.stories = [Story(name="Story1", elevation=3.0)]
 
     # Material: Concrete E = 25,000,000 kPa (25 GPa)
     mat = ElasticMaterial(id="CONC", name="C25", E=25_000_000.0, nu=0.2, rho=2400.0)
@@ -149,7 +151,9 @@ def test_convert_project_geometry_and_results():
     # Verify geometry converted: 3m -> 9.8425 ft, 5m -> 16.4042 ft
     assert pytest.approx(proj.model.nodes[1].z, rel=1e-4) == 3.0 * 3.28084
     assert pytest.approx(proj.model.nodes[2].x, rel=1e-4) == 5.0 * 3.28084
-    assert pytest.approx(proj.model.story_elevations[1], rel=1e-4) == 3.0 * 3.28084
+    assert pytest.approx(proj.model.base_elevation, abs=1e-9) == 0.0
+    assert proj.model.stories[0].name == "Story1"
+    assert pytest.approx(proj.model.stories[0].elevation, rel=1e-4) == 3.0 * 3.28084
 
     # Verify section converted: 0.3m -> 0.98425 ft
     assert pytest.approx(proj.model.sections[0].b, rel=1e-4) == 0.3 * 3.28084

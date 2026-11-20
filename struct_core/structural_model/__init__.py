@@ -67,6 +67,7 @@ from .sections import (
     SolidSection,
 )
 from .shells import ShellElement, ShellSection
+from .stories import Story
 from .registry import ElementRegistry
 from .supports import Support
 from .topology import (
@@ -141,6 +142,7 @@ __all__ = [
     "AnalysisCase",
     # Containers
     "ObjectGroup",
+    "Story",
     "StructuralModel",
     # Topology
     "FrameStory",

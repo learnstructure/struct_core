@@ -236,7 +236,8 @@
     ],
     "load_combinations": [],
     "area_loads": [],
-    "story_elevations": [],
+    "base_elevation": null,
+    "stories": [],
     "ground_motions": [],
     "analysis_cases": [
       {

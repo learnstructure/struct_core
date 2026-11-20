@@ -178,7 +178,7 @@ class Project(BaseSchemaModel):
         if name in (
             "nodes", "elements", "materials", "sections", "supports",
             "shell_elements", "shell_sections", "groups",
-            "load_cases", "load_combinations", "area_loads", "story_elevations",
+            "load_cases", "load_combinations", "area_loads", "base_elevation", "stories",
             "ground_motions", "analysis_cases", "mass_source", "mass_sources",
             "dimension", "vertical_axis",
         ):

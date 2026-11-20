@@ -6,6 +6,14 @@ All notable changes to `struct_core` are recorded in this file. The format follo
 
 ## [Unreleased]
 
+### Changed
+- **Named stories (ROADMAP §1a):** replaced `StructuralModel.story_elevations` (no alias) with `Story(name, elevation)`
+  (`struct_core.structural_model.stories`), `StructuralModel.stories: List[Story]` (levels above the base only), and
+  `StructuralModel.base_elevation: Optional[float] = None` (with no default of 0). Added `StructuralModel.get_story`,
+  `Project` delegation for `base_elevation` and `stories`, unit conversion of `base_elevation` and `stories` in
+  `convert_project_units`, and validation of finite `base_elevation`, unique story names and elevations, and
+  `story.elevation > base_elevation` in `validate_structural_model`. Tests: `tests/test_stories.py`, `tests/test_units.py`.
+
 ### Added
 - `ObjectGroup` (`struct_core.structural_model.groups`, keyed by `id`) and `StructuralModel.groups` (with
   `StructuralModel.get_group` and `Project.groups` delegation), for named selections of nodes, frame elements, and

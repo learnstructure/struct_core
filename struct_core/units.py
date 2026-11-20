@@ -646,9 +646,12 @@ def convert_project_units(
             if hasattr(node, "inertia") and node.inertia is not None:
                 node.inertia = float(node.inertia) * f_node_inertia
 
-        # 2. Story Elevations
-        if hasattr(model, "story_elevations") and model.story_elevations:
-            model.story_elevations = [float(h) * f_len for h in model.story_elevations]
+        # 2. Base elevation and named stories
+        if getattr(model, "base_elevation", None) is not None:
+            model.base_elevation = float(model.base_elevation) * f_len
+        if getattr(model, "stories", None):
+            for story in model.stories:
+                story.elevation = float(story.elevation) * f_len
 
         # 3. Materials (E, Et, fy, fu, fc, rho, unit_weight)
         _convert_materials(getattr(model, "materials", []), source_units, target_units, converted)

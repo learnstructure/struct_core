@@ -256,6 +256,27 @@ def validate_structural_model(model: StructuralModel, raise_error: bool = True) 
             if missing:
                 errors.append(f"Group '{group.id}' references missing {label}(s) {missing}")
 
+    # 12. Base elevation and named stories
+    base_elev = getattr(model, "base_elevation", None)
+    if base_elev is not None and not math.isfinite(float(base_elev)):
+        errors.append(f"base_elevation must be finite, got {base_elev!r}")
+    seen_story_names: Set[str] = set()
+    seen_story_elevs: List[float] = []
+    for story in getattr(model, "stories", None) or []:
+        if story.name in seen_story_names:
+            errors.append(f"Duplicate Story name found: '{story.name}'")
+        else:
+            seen_story_names.add(story.name)
+        ev = float(story.elevation)
+        if base_elev is not None and math.isfinite(float(base_elev)) and ev <= float(base_elev) + 1e-9:
+            errors.append(
+                f"Story '{story.name}' elevation ({ev:g}) must be strictly above base_elevation ({float(base_elev):g})"
+            )
+        if any(abs(ev - prev) <= 1e-9 for prev in seen_story_elevs):
+            errors.append(f"Duplicate Story elevation found: {ev:g} (story '{story.name}')")
+        else:
+            seen_story_elevs.append(ev)
+
     if raise_error and errors:
         raise StructuralValidationError(errors)
 

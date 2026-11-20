@@ -15,6 +15,7 @@ from .migration import migrate_element_materials
 from .nodes import Node
 from .sections import Section
 from .shells import ShellElement, ShellSection
+from .stories import Story
 from .supports import Support
 
 
@@ -40,7 +41,14 @@ class StructuralModel(BaseSchemaModel):
     load_cases: List[LoadCase] = Field(default_factory=list, description="List of load cases")
     load_combinations: List[LoadCombination] = Field(default_factory=list, description="List of load combinations")
     area_loads: List[AreaLoad] = Field(default_factory=list, description="List of area/surface loads applied over floors/panels")
-    story_elevations: List[float] = Field(default_factory=list, description="List of floor/story elevations (Z or Y coordinates)")
+    base_elevation: Optional[float] = Field(
+        default=None,
+        description="Base datum elevation in model length units (no default of 0; ASCE 7-22 §12.8.3 measures h_x from the base)",
+    )
+    stories: List[Story] = Field(
+        default_factory=list,
+        description="Named story levels above the base (each Story(name, elevation) in model length units)",
+    )
     groups: List[ObjectGroup] = Field(default_factory=list, description="Named groups of nodes, elements, and shell elements")
     ground_motions: List[GroundMotion] = Field(default_factory=list, description="List of ground motion records")
     analysis_cases: List[AnalysisCase] = Field(default_factory=list, description="List of analysis cases")
@@ -88,6 +96,10 @@ class StructuralModel(BaseSchemaModel):
     def get_group(self, group_id: str) -> Optional[ObjectGroup]:
         """The object group with ID ``group_id``, or None."""
         return next((g for g in self.groups if g.id == group_id), None)
+
+    def get_story(self, name: str) -> Optional[Story]:
+        """The story with name ``name``, or None."""
+        return next((s for s in self.stories if s.name == name), None)
 
     def section_of(
         self, element: Union[Element, ShellElement, ElementId]
